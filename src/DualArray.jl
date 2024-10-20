@@ -15,7 +15,7 @@ function Dual{T, Partials}(val) where {T, Partials <: AbstractArray{T}}
     if val isa Dual
         return val
     end
-    Dual(convert(T, val), zeros(T, 1))
+    Dual(convert(T, val), ones(T, 1))
 end
 
 for op in (:zero, :one)
@@ -25,6 +25,7 @@ end
 promote_rule(::Type{Dual{T}},::Type{S}) where {T,S} = Dual{promote_type(T,S)}
 convert(::Type{T}, d::Dual) where{T <: Number} = convert(T, d.value)
 
+#TODO: Is this possible without a long list of functions to loop through?
 for op in (:log10, :sin, :cos)
     @eval begin 
         function $op(x::Dual)
@@ -122,6 +123,8 @@ const DualMatrix{T, M} = DualArray{T, 2, 4, M} where {T, M <: AbstractArray{T, 4
 DualVector(x::AbstractVector, j::AbstractMatrix) = DualArray(x, j)
 DualVector(x::AbstractVector, j::ComponentArray) = DualArray(x, j)
 DualMatrix(x::AbstractMatrix, j::AbstractArray{T,4}) where {T} = DualArray(x, j)
+
+vec(D::Dual...) = DualVector(vcat((d.value for d in D)...), vcat((reshape(d.partials, 1, :) for d in D)...))
 
 function DualMatrix(x::AbstractMatrix)
     val = [y.value for y in x]

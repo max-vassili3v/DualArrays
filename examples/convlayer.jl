@@ -1,19 +1,11 @@
 using LinearAlgebra, MLDatasets, Plots, DualArrays, Random, FillArrays
 
 #GOAL: Implement and differentiate a convolutional neural network layer
-function convlayer(img, ker, xstride = 1, ystride = 1)
-    n, m = size(ker)
-    t = eltype(ker)
-
-    n2, m2 = size(img)
-    n3, m3 = div(n2-n+1,xstride), div(m2-m+1,ystride)
-    fmap = zeros(promote_type(eltype(img), t), n3, m3)
-    #Apply kernel to section of image
-    for i= 1:xstride:n3,j = 1:ystride:m3
-        ft = img[i:i+n-1,j:j+m-1] .* ker
-        fmap[i,j] = sum(ft)
-    end
-    fmap
+function convlayer(img, ker, x, y, xstride = 1, ystride = 1)
+    n = size(img, 1) - x + 1
+    m = size(img, 2) - y + 1
+    flat_img = vcat((reshape(img[i:i+x-1,j:j+y-1], 1, :) for i = 1:n, j = 1:m)...)
+    reshape(flat_img * ker, n, m)
 end
 
 function softmax(x)
@@ -34,11 +26,11 @@ function cross_entropy(x, y)
 end
 
 function model_loss(x, y, w)
-    ker = reshape(w[1:9], 3, 3)
+    ker = w[1:9]
     weights = reshape(w[10:6769], 10, 676)
     biases = w[6770:6779]
     println("Reshape Complete")
-    l1 = vec(DualMatrix(convlayer(x, ker)))
+    l1 = vec(convlayer(x, ker, 3, 3))
     println("Conv layer complete")
     l2 = dense_layer(weights, biases, l1, softmax)
     println("Dense Layer Complete")
@@ -57,7 +49,6 @@ function train_model()
     for i = 1:epochs
         train, test = dataset[i]
         d = DualVector(p, I(6779))
-
         loss, grads = model_loss(train, test, d)
         println(loss)
         p = p - lr * grads
@@ -65,5 +56,4 @@ function train_model()
 end
 
 train_model()
-
 

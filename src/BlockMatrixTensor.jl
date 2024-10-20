@@ -3,7 +3,7 @@
 using BlockArrays, SparseArrays
 
 struct BlockMatrixTensor{T} <: AbstractArray{T, 4}
-    data::BlockMatrix{T}
+    data::BlockedMatrix{T}
 end
 
 #Construct BlockMatrixTensor from 4-tensor. Useful for testing purposes.

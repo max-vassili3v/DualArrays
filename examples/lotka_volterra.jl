@@ -1,12 +1,33 @@
-using DifferentialEquations, DualArrays, Plots
+using DifferentialEquations, DualArrays, Plots, LinearAlgebra, ForwardDiff
 
-f(u, p, t) = p * u
+N = 5
 
-T = (0.0, 5.0)
-u0 = DualArrays.Dual(1., [0.])
+function f!(du, u, p, t)
+   du[:] = p .* u
+end
 
-d = -1
+T = (0.0, 3.0)
+u0 = ones(5)
 
-prob = ODEProblem(f, u0, T, d)
-sol = solve(prob)
+p = -collect(1:N)
+
+prob = ODEProblem(f!, u0, T, p)
+sol = solve(prob, saveat = 0.2).u
+
+# k = rand(N)
+# lr = 0.01
+# for _ = 1:1000
+#     probl = ODEProblem(f!, u0, T, k)
+#     guess = solve(probl, saveat = 0.2)
+#     D = sum([(sol[i] - DualVector(guess.u[i], I(N))) .^ 2 for i = 1:length(guess.t)])
+#     grads = sum(D).partials
+#     global k -= lr * grads
+# end
+# k
+
+function solve_eq(k)
+    probl = ODEProblem(f!, u0, T, k)
+    guess = solve(probl, saveat = 0.2)
+    guess
+end
 
