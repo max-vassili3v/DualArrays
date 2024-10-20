@@ -9,16 +9,51 @@ struct Dual{T, Partials <: AbstractArray{T}} <: Real
     partials::Partials
 end
 
-zero(::Type{Dual{T}}) where {T} = Dual(zero(T), zeros(T,1))
+Dual{T, Partials}(d::Dual{T, Partials}) where {T, Partials<:(AbstractArray{T})} = d
+
+function Dual{T, Partials}(val) where {T, Partials <: AbstractArray{T}}
+    if val isa Dual
+        return val
+    end
+    Dual(convert(T, val), zeros(T, 1))
+end
+
+for op in (:zero, :one)
+    @eval $op(::Type{Dual{T, Partials}}) where {T, Partials <: AbstractArray{T}} = Dual($op(T), zeros(T,1))
+end
+
 promote_rule(::Type{Dual{T}},::Type{S}) where {T,S} = Dual{promote_type(T,S)}
+convert(::Type{T}, d::Dual) where{T <: Number} = convert(T, d.value)
+
+for op in (:log10, :sin, :cos)
+    @eval begin 
+        function $op(x::Dual)
+            _, df = frule((ZeroTangent(), 1), $op, x.value)
+            Dual($op(x.value), df * x.partials)
+        end
+    end
+end
+
+decompose(d::Dual) = decompose(d.value)
+
+norm(d::Dual) = Dual(norm(d.value), d.partials * (d.value < 0 ? -1 : 1))
 
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials
 for op in (:+, :-)
     @eval $op(a::Dual, k::Real) = Dual($op(a.value, k), a.partials)
+    @eval $op(a::Dual, k::Dual) = Dual($op(a.value, k.value), a.partials + k.partials)
+    @eval $op(a::Real, k::Dual) = Dual($op(a, k.value), k.partials)
 end
 for op in (:*, :/)
     @eval $op(a::Dual, k::Real) = Dual($op(a.value, k), $op(a.partials,k))
+    @eval $op(a::Real, k::Dual) = Dual($op(a, k.value), $op(a,k.partials))
 end
+for op in (:<, :>, :<=, :>=)
+    @eval $op(a::Dual, b::Real) = $op(a.value, b)
+    @eval $op(a::Real, b::Dual) = $op(a, b.value)
+    @eval $op(a::Dual, b::Dual) = $op(a.value, b.value)
+end
+
 
 -(x::Dual) = Dual(-1 * x.value, -1 * x.partials)
 
@@ -243,6 +278,18 @@ function vcat(a::Real ,x::DualVector, b::Real)
     DualVector(val, jac)
 end
 
+for args in ((Real, DualVector), (DualVector, Real))
+    a, b = args
+    @eval begin
+        function vcat(x::$a ,y::$b)
+            cols = max(length(x), length(y))
+            val = vcat(_value(x), _value(y))
+            jac = sparsevcat(_jacobian(x, cols), _jacobian(y, cols))
+            DualVector(val, jac)
+        end
+    end
+end
+
 ###
 #
 # enable converting between DualVector and DualMatrix.
@@ -267,7 +314,7 @@ end
 _blockvec(x::AbstractArray{T,4}) where {T} = reshape(x, size(x, 1) * size(x, 2), size(x, 3) * size(x, 4))
 _blockvec(x::BlockMatrixTensor) = vcat(blocks(x.data)...)
 
-function vec(x::DualArray)
+function vec(x::DualMatrix)
     val = vec(x.value)
     jac = flatten(reshape(x.jacobian, length(val), 1, :, :))
     DualVector(val, jac)

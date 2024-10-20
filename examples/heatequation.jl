@@ -9,7 +9,7 @@
 # Compare performance and results.
 ##
 
-using LinearAlgebra, BandedMatrices, OrdinaryDiffEqs, Plots, 
+using LinearAlgebra, BandedMatrices, DifferentialEquations, Plots, 
 ForwardDiff
 
 U = 500
@@ -31,4 +31,4 @@ function ode!(du, u, λ, t)
     du .= L * u + λ * u .^ 2
 end
 
-ForwardDiff.derivative(solve_eq,0)
+@time ForwardDiff.derivative(solve_eq,0.1)
