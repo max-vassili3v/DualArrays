@@ -1,11 +1,11 @@
-using LinearAlgebra, MLDatasets, Plots, DualArrays, Random, FillArrays
+using LinearAlgebra, MLDatasets, Plots, DualArrays, Random, FillArrays, SparseArrays
 
 #GOAL: Implement and differentiate a convolutional neural network layer
 function convlayer(img, ker, x, y, xstride = 1, ystride = 1)
     n = size(img, 1) - x + 1
     m = size(img, 2) - y + 1
-    flat_img = vcat((reshape(img[i:i+x-1,j:j+y-1], 1, :) for i = 1:n, j = 1:m)...)
-    reshape(flat_img * ker, n, m)
+    flat_img = vcat((sparse_transpose(sparsevec(img[i:i+x-1,j:j+y-1])) for i = 1:n, j = 1:m)...)
+    flat_img * ker
 end
 
 function softmax(x)
@@ -30,30 +30,32 @@ function model_loss(x, y, w)
     weights = reshape(w[10:6769], 10, 676)
     biases = w[6770:6779]
     println("Reshape Complete")
-    l1 = vec(convlayer(x, ker, 3, 3))
+    l1 = convlayer(x, ker, 3, 3)
     println("Conv layer complete")
     l2 = dense_layer(weights, biases, l1, softmax)
-    println("Dense Layer Complete")
-    target = OneElement(1, y+1, 10)
-    loss = cross_entropy(l2, target)
-    println("Loss complete")
-    loss.value, loss.partials
+    l2
+    # println("Dense Layer Complete")
+    # target = OneElement(1, y+1, 10)
+    # loss = cross_entropy(l2, target)
+    # println("Loss complete")
+    # loss.value, loss.partials
 end
 
 function train_model()
     p = rand(6779)
-    epochs = 1000
+    epochs = 1
     lr = 0.02
     dataset = MNIST(:train)
 
     for i = 1:epochs
         train, test = dataset[i]
         d = DualVector(p, I(6779))
-        loss, grads = model_loss(train, test, d)
-        println(loss)
-        p = p - lr * grads
+        loss = model_loss(sparse(train), test, d)
+        return loss
+        # println(loss)
+        # p = p - lr * grads
     end
 end
 
-train_model()
+A = train_model()
 

@@ -1,5 +1,6 @@
 # TODO: support non-banded
 sparsevcat(As...) = vcat(convert.(BandedMatrix,  As)...)
+*(A::SparseMatrixCSC, B::ArrayLayouts.LayoutMatrix) = A * sparse(B)
 
 # Should Partials necessarily be a vector?
 # For example, if we index a DualMatrix, should partials retain the shape
@@ -7,6 +8,13 @@ sparsevcat(As...) = vcat(convert.(BandedMatrix,  As)...)
 struct Dual{T, Partials <: AbstractArray{T}} <: Real
     value::T
     partials::Partials
+end
+
+function sparsevec(A::SparseMatrixCSC)
+    n, m = size(A)
+    nz = findnz(A)
+    nzind = n * (nz[2] .- 1) + nz[1] 
+    SparseVector(n*m,nzind,nz[3])
 end
 
 Dual{T, Partials}(d::Dual{T, Partials}) where {T, Partials<:(AbstractArray{T})} = d
@@ -130,6 +138,10 @@ function DualMatrix(x::AbstractMatrix)
     val = [y.value for y in x]
     jac_blocks = [y.partials for y in x]
     DualMatrix(val, BlockMatrixTensor(jac_blocks))
+end
+
+function zeros(::Type{Dual{T}}, dims...) where{T}
+    DualArray(zeros(T, dims...), )
 end
 
 function getindex(x::DualVector, y::Int)
