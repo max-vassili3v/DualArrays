@@ -1,7 +1,7 @@
-using DifferentialEquations, LinearAlgebra, Plots, BlockArrays, FFMPEG, DualArrays
+using OrdinaryDiffEq, LinearAlgebra, Plots, BlockArrays, DualArrays
 
 
-T = (0.0, 10.0)
+T = (0.0, 3.0)
 N = 8
 u0 = [ sin.(collect(0:(N-1)) * pi/(N - 1)); zeros(N)]
 
@@ -24,11 +24,23 @@ end
 
 function solve_eq(u0, T, p)
     prob = ODEProblem(f, u0, T, p)
-    sol = solve(prob, abstol = 1e-8, saveat = 0.5)
+    sol = solve(prob, abstol = 1e-8, saveat = 0.2)
     sol
 end
 
-k = DualVector(rand(N - 1), I(N - 1))
+sol = solve_eq(u0, T, ones(N-1)).u
 
-solve_eq(u0, T, k)
+k = rand(N-1)
+lr = 0.0001
+for _ = 1:25
+    probl = ODEProblem(f, u0, T, k)
+    guess = solve(probl, saveat = 0.2)
+    D = sum([(sol[i] - DualVector(guess.u[i], I(2N))) .^ 2 for i = 1:length(guess.t)])
+    grads = sum(D).partials
+    k_grads = [grads[i+1] - grads[i] for i = N+1:2N-1]
+    global k -= lr * k_grads
+end
+k
+
+
 

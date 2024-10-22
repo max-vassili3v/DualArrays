@@ -26,9 +26,9 @@ function Dual{T, Partials}(val) where {T, Partials <: AbstractArray{T}}
     Dual(convert(T, val), ones(T, 1))
 end
 
-for op in (:zero, :one)
-    @eval $op(::Type{Dual{T, Partials}}) where {T, Partials <: AbstractArray{T}} = Dual($op(T), zeros(T,1))
-end
+# for op in (:zero, :one)
+#     @eval $op(::Type{Dual{T, Partials}}) where {T, Partials < AbstractArray{T}} = Dual($op(T), zeros(T,1))
+# end
 
 promote_rule(::Type{Dual{T}},::Type{S}) where {T,S} = Dual{promote_type(T,S)}
 convert(::Type{T}, d::Dual) where{T <: Number} = convert(T, d.value)
@@ -53,10 +53,11 @@ for op in (:+, :-)
     @eval $op(a::Dual, k::Dual) = Dual($op(a.value, k.value), a.partials + k.partials)
     @eval $op(a::Real, k::Dual) = Dual($op(a, k.value), k.partials)
 end
-for op in (:*, :/)
-    @eval $op(a::Dual, k::Real) = Dual($op(a.value, k), $op(a.partials,k))
-    @eval $op(a::Real, k::Dual) = Dual($op(a, k.value), $op(a,k.partials))
-end
+    *(a::Dual, k::Real) = Dual(a.value * k, a.partials * k)
+    *(a::Real, k::Dual) = Dual(a * k.value, a * k.partials)
+    /(a::Dual, k::Real) = Dual(a.value / k, a.partials)
+    /(a::Real, k::Dual) = Dual(a/k.value, a/(k.value^2) * k.partials)
+
 for op in (:<, :>, :<=, :>=)
     @eval $op(a::Dual, b::Real) = $op(a.value, b)
     @eval $op(a::Real, b::Dual) = $op(a, b.value)
@@ -129,7 +130,6 @@ const DualVector{T, M} = DualArray{T, 1, 2, M} where {T, M <: AbstractMatrix{T}}
 const DualMatrix{T, M} = DualArray{T, 2, 4, M} where {T, M <: AbstractArray{T, 4}}
 
 DualVector(x::AbstractVector, j::AbstractMatrix) = DualArray(x, j)
-DualVector(x::AbstractVector, j::ComponentArray) = DualArray(x, j)
 DualMatrix(x::AbstractMatrix, j::AbstractArray{T,4}) where {T} = DualArray(x, j)
 
 vec(D::Dual...) = DualVector(vcat((d.value for d in D)...), vcat((reshape(d.partials, 1, :) for d in D)...))
@@ -173,6 +173,7 @@ end
 *(x::AbstractMatrix, y::DualVector) = DualVector(x * y.value, x * y.jacobian)
 *(x::Number, y::DualVector) = DualVector(x * y.value, x * y.jacobian)
 *(x::DualVector, y::Dual) = DualVector(x.value * y.value, y.value * x.jacobian + x.value * y.partials')
+*(x::Dual, y::DualVector) = DualVector(x.value * y.value, x.value * y.jacobian + y.value * x.partials')
 /(x::DualVector, y::Number) = DualVector(x.value / y, x.jacobian/ y)
 /(x::DualVector, y::Dual) = x * Dual(y.value, -y.partials) / y.value^2
 

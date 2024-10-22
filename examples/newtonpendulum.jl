@@ -7,16 +7,16 @@
 ##
 
 
-using LinearAlgebra, ForwardDiff, Plots, DualArrays, FillArrays
+using LinearAlgebra, ForwardDiff, Plots, DualArrays, FillArrays, Test, BenchmarkTools
 
 #Boundary Conditions
-a = 0.1
+a = 0.2
 b = 0.0
 
 #Time step, Time period and number of x for discretisation.
-ts = 0.1
+ts = 0.05
 
-Tmax = 5.0
+Tmax = 4.0
 N = Int(Tmax/ts) - 1
 
 #LHS of ode
@@ -73,10 +73,25 @@ x0 = zeros(N)
 @time sol1 = newton_method_forwarddiff(f, x0, 100);
 @time sol2 = newton_method_dualvector(f, x0, 100);
 @test sol1 ≈ sol2
-@time sol = newton_method_dualvector2(f, x0, 100);
 
-x0 = zeros(N); x0[1] = a; x0[end] = b;
+t1 = []
+t2 = []
 
-plot(0:ts:Tmax, [a; sol; b])
-plot!(0:ts:Tmax, [0; f(sol); 0])
+for n = 100:100:1000
+    println(n)
+    global ts = Tmax / n
+    global N = Int(floor(Tmax/ts) - 1)
+    global x0 = zeros(N)
+    push!(t1, @ballocated newton_method_forwarddiff(f, x0, 25))
+    push!(t2, @ballocated newton_method_dualvector(f, x0, 25))
+end
+#@time sol = newton_method_dualvector(f, x0, 100);
+
+plot(collect(100:100:1000), t1)
+plot!(collect(100:100:1000), t2)
+
+# x0 = zeros(N); x0[1] = a; x0[end] = b;
+
+# plot(0:ts:Tmax, [a; sol; b])
+# plot!(0:ts:Tmax, [0; f(sol); 0])
 
