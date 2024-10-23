@@ -4,7 +4,7 @@ using LinearAlgebra, MLDatasets, Plots, DualArrays, Random, FillArrays, SparseAr
 function convlayer(img, ker, x, y, xstride = 1, ystride = 1)
     n = size(img, 1) - x + 1
     m = size(img, 2) - y + 1
-    flat_img = vcat((sparse_transpose(sparsevec(img[i:i+x-1,j:j+y-1])) for i = 1:n, j = 1:m)...)
+    flat_img = vcat((sparse_transpose(sparsevec(img[i:i+x-1,j:j+y-1])) for i = 1:xstride:n, j = 1:ystride:m)...)
     flat_img * ker
 end
 

@@ -6,7 +6,7 @@
 # via discretisation and Newton's method.
 ##
 
-using LinearAlgebra, ForwardDiff, Plots, DualArrays, FillArrays, Test
+using LinearAlgebra, ForwardDiff, Plots, DualArrays, FillArrays, Test, BenchmarkTools
 
 #Boundary Conditions
 a = 0.2
@@ -95,7 +95,6 @@ function learn_length_dualvector(l, n)
         d = DualVector(y, reshape(g, :, 1))
         grad = (sum((d - sol).^2) / length(x0)).partials[1]
         ret += lr * grad 
-        push!(rets, ret)
     end
     ret
 end
@@ -105,11 +104,16 @@ function learn_length_forwarddiff(l, n)
     for _ = 1:n
         d = ForwardDiff.derivative(ret -> (newton_method_forwarddiff(f, x0, 100, ret) - sol).^2 / length(x0), ret)
         ret -= lr * sum(d)
-        push!(rets, ret) 
     end
     ret
 end
 
-_, e1 = learn_length_dualvector(9.5, 200)
-_, e2 = learn_length_forwarddiff(9.5, 200)
+t2 = []
+t1 = []
+
+for n = 50:50:500
+    println(n)
+    push!(t2, @belapsed learn_length_dualvector(9.5, $n))
+    push!(t1, @belapsed learn_length_forwarddiff(9.5, $n))
+end
 
