@@ -48,8 +48,8 @@ end
 x0 = zeros(Float64, N)
 
 #Solve and plot both solution and LHS ('deviation' from system)
-@time sol = newton_method_forwarddiff(f, x0, 100)
-@time sol = newton_method_dualvector(f, x0, 100)
+@time sol = newton_method_forwarddiff(f, x0, 10)
+@time sol = newton_method_dualvector(f, x0, 10)
 plot(0:ts:Tmax, [a; sol; b])
 plot!(0:ts:Tmax, [0; f(sol); 0])
 
