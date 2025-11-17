@@ -1,4 +1,4 @@
-# Utility functions for DualArrays.jl
+# Miscellaneous functions for DualArrays.jl
 
 """
 Sum all elements of a DualVector, returning a single Dual number.

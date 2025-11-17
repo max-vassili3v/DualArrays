@@ -48,9 +48,7 @@ struct DualVector{T, V <: AbstractVector{T},M <: AbstractMatrix{T}} <: AbstractV
 end
 
 """
-    DualVector(value::AbstractVector, jacobian::AbstractMatrix)
-
-Convenience constructor that promotes types to be compatible.
+Constructor that forces type compatibility
 """
 function DualVector(value::AbstractVector, jacobian::AbstractMatrix)
     T = promote_type(eltype(value), eltype(jacobian))

@@ -44,7 +44,7 @@ function broadcast_rule(f, d::DualVector)
     jac = similar(d.jacobian)
 
     @inbounds for (i, x) in pairs(d.value)
-        y, dy = ChainRules.frule((ChainRules.NoTangent(), d.jacobian[i, :]), f, x[i])
+        y, dy = ChainRules.frule((ChainRules.NoTangent(), d.jacobian[i, :]), f, x)
         val[i] = y
         jac[i, :] = dy
     end
@@ -62,10 +62,11 @@ operation a (+) b on reals a, b should be broadcasted over:
 function broadcast_rule(f, d::DualVector, x::Real)
     val = similar(d.value)
     jac = similar(d.jacobian)
+    z = zero(jac[1, :])
 
     @inbounds for (i, y) in pairs(d.value)
         yval, dy = ChainRules.frule(
-            (ChainRules.NoTangent(), d.jacobian[i, :], zero(d.jacobian[i, :])),
+            (ChainRules.NoTangent(), d.jacobian[i, :], z),
              f, y, x)
         val[i] = yval
         jac[i, :] = dy
@@ -77,11 +78,48 @@ end
 function broadcast_rule(f, x::Real, d::DualVector)
     val = similar(d.value)
     jac = similar(d.jacobian)
+    z = zero(jac[1, :])
 
     @inbounds for (i, y) in pairs(d.value)
         yval, dy = ChainRules.frule(
-            (ChainRules.NoTangent(), zero(d.jacobian[i, :]), d.jacobian[i, :]),
+            (ChainRules.NoTangent(), z, d.jacobian[i, :]),
              f, x, y)
+        val[i] = yval
+        jac[i, :] = dy
+    end
+
+    return DualVector(val, jac)
+end
+
+"""
+Extend for broadcasting Dual and DualVector
+"""
+
+function broadcast_rule(f, d::DualVector, x::Dual)
+    val = similar(d.value)
+    jac = similar(d.jacobian)
+    z = x.partials
+
+    @inbounds for (i, y) in pairs(d.value)
+        yval, dy = ChainRules.frule(
+            (ChainRules.NoTangent(), d.jacobian[i, :], z),
+             f, y, x.value)
+        val[i] = yval
+        jac[i, :] = dy
+    end
+
+    return DualVector(val, jac)
+end
+
+function broadcast_rule(f, x::Dual, d::DualVector)
+    val = similar(d.value)
+    jac = similar(d.jacobian)
+    z = x.partials
+
+    @inbounds for (i, y) in pairs(d.value)
+        yval, dy = ChainRules.frule(
+            (ChainRules.NoTangent(), z, d.jacobian[i, :]),
+             f, x.value, y)
         val[i] = yval
         jac[i, :] = dy
     end
@@ -92,12 +130,16 @@ end
 # Define a lookup table typeof(function) => function
 function_lookup = Dict{DataType, Function}()
 
+# todo: extend to LinearAlgebra and FastMath functions
 for n in names(Base)
     f = getfield(Base, n)
     if f isa Function
         function_lookup[typeof(f)] = f
     end
 end
+
+# a set of defined broadcasts to avoid duplicate definitions
+defined = Set{DataType}()
 
 # Get all applicable frules defined in ChainRules
 # and define broadcasted versions for DualVector using vector_rule
@@ -112,6 +154,7 @@ for f in frules
     op, args = sig.parameters[2], sig.parameters[3:end]
 
     isconcretetype(op) || continue
+    op in defined && continue
 
     # if it is a single argument function...
     if length(args) == 1
@@ -122,6 +165,7 @@ for f in frules
             fn = function_lookup[op]
 
             @eval Base.broadcasted(x::$op, d::DualVector) = broadcast_rule($fn, d)
+            push!(defined, op)
         catch e
             # skip over erroneous definitions. Uncomment the below for debugging.
             # println("Failed to define broadcasted for $op")
@@ -139,6 +183,9 @@ for f in frules
             
             @eval Base.broadcasted(x::$op, d::DualVector, y::Real) = broadcast_rule($fn, d, y)
             @eval Base.broadcasted(x::$op, y::Real, d::DualVector) = broadcast_rule($fn, y, d)
+            @eval Base.broadcasted(x::$op, d::DualVector, du::Dual) = broadcast_rule($fn, d, du)
+            @eval Base.broadcasted(x::$op, du::Dual, d::DualVector) = broadcast_rule($fn, du, d)
+            push!(defined, op)
         catch
             # skip over erroneous definitions. Uncomment the below for debugging.
             # println("Failed to define broadcasted for $op")
