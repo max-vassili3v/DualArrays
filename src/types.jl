@@ -32,18 +32,18 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualVector{T, M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
-    value::Vector{T}
+struct DualVector{T, V <: AbstractVector{T},M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
+    value::V
     jacobian::M
-    
-    function DualVector(value::Vector{T}, jacobian::M) where {T, M <: AbstractMatrix{T}}
+
+    function DualVector(value::V, jacobian::M) where {T, V <: AbstractVector{T}, M <: AbstractMatrix{T}}
         if size(jacobian, 1) != length(value)
             x, y = length(value), size(jacobian, 1)
             throw(ArgumentError("vector length must match number of rows in jacobian.\n" *
                                "vector length: $x\n" *
                                "no. of jacobian rows: $y"))
         end
-        new{T, M}(value, jacobian)
+        new{T,V, M}(value, jacobian)
     end
 end
 

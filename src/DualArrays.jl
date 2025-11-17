@@ -5,7 +5,9 @@ A Julia package for efficient automatic differentiation using dual numbers and d
 
 This package provides:
 - `Dual`: A dual number type for storing values and their derivatives
-- `DualVector`: A vector of dual numbers represented efficiently with a Jacobian matrix
+- `DualVector`: A vector of dual numbers represented with a Jacobian matrix
+
+Differentiation rules are mostly provided by ChainRules.jl.
 """
 module DualArrays
 

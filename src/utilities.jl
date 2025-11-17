@@ -1,8 +1,6 @@
 # Utility functions for DualArrays.jl
 
 """
-    sum(x::DualVector)
-
 Sum all elements of a DualVector, returning a single Dual number.
 """
 function Base.sum(x::DualVector)
@@ -25,8 +23,6 @@ _size(x::Real) = 1
 _size(x::DualVector) = length(x.value)
 
 """
-    vcat(x::Union{Dual, DualVector}...)
-
 Vertically concatenate Dual numbers and DualVectors.
 """
 function Base.vcat(x::Union{Dual, DualVector}...)
@@ -39,8 +35,6 @@ function Base.vcat(x::Union{Dual, DualVector}...)
 end
 
 """
-    vcat(x::Union{Real, DualVector}...)
-
 Vertically concatenate Real numbers and DualVectors.
 """
 
@@ -56,8 +50,6 @@ function Base.vcat(x::Union{Real, DualVector}...)
 end
 
 """
-    show(io::IO, ::MIME"text/plain", x::DualVector)
-
 Custom display method for DualVectors.
 """
 Base.show(io::IO, ::MIME"text/plain", x::DualVector) = 
