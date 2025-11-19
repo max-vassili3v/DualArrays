@@ -127,17 +127,6 @@ function broadcast_rule(f, x::Dual, d::DualVector)
     return DualVector(val, jac)
 end
 
-# Define a lookup table typeof(function) => function
-function_lookup = Dict{DataType, Function}()
-
-# todo: extend to LinearAlgebra and FastMath functions
-for n in names(Base)
-    f = getfield(Base, n)
-    if f isa Function
-        function_lookup[typeof(f)] = f
-    end
-end
-
 # a set of defined broadcasts to avoid duplicate definitions
 defined = Set{DataType}()
 
@@ -161,15 +150,8 @@ for f in frules
         args[1] isa Type || continue
         Real <: args[1] || continue
 
-        try
-            fn = function_lookup[op]
-
-            @eval Base.broadcasted(x::$op, d::DualVector) = broadcast_rule($fn, d)
-            push!(defined, op)
-        catch e
-            # skip over erroneous definitions. Uncomment the below for debugging.
-            # println("Failed to define broadcasted for $op")
-        end
+        @eval Base.broadcasted(fn::$op, d::DualVector) = broadcast_rule(fn, d)
+        push!(defined, op)
     end
 
     # if it is a binary operation...
@@ -178,17 +160,11 @@ for f in frules
         args[2] isa Type || continue
         Real <: args[1] && Real <: args[2] || continue
 
-        try
-            fn = function_lookup[op]
-            
-            @eval Base.broadcasted(x::$op, d::DualVector, y::Real) = broadcast_rule($fn, d, y)
-            @eval Base.broadcasted(x::$op, y::Real, d::DualVector) = broadcast_rule($fn, y, d)
-            @eval Base.broadcasted(x::$op, d::DualVector, du::Dual) = broadcast_rule($fn, d, du)
-            @eval Base.broadcasted(x::$op, du::Dual, d::DualVector) = broadcast_rule($fn, du, d)
-            push!(defined, op)
-        catch
-            # skip over erroneous definitions. Uncomment the below for debugging.
-            # println("Failed to define broadcasted for $op")
-        end
+        
+        @eval Base.broadcasted(fn::$op, d::DualVector, y::Real) = broadcast_rule(fn, d, y)
+        @eval Base.broadcasted(fn::$op, y::Real, d::DualVector) = broadcast_rule(fn, y, d)
+        @eval Base.broadcasted(fn::$op, d::DualVector, du::Dual) = broadcast_rule(fn, d, du)
+        @eval Base.broadcasted(fn::$op, du::Dual, d::DualVector) = broadcast_rule(fn, du, d)
+        push!(defined, op)
     end
 end
