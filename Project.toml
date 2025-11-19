@@ -1,6 +1,6 @@
 name = "DualArrays"
 uuid = "429e4e16-f749-45f3-beec-30742fae38ce"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Sheehan Olver <solver@mac.com>"]
 
 [deps]
