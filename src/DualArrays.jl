@@ -11,7 +11,7 @@ Differentiation rules are mostly provided by ChainRules.jl.
 """
 module DualArrays
 
-export DualVector, Dual
+export DualVector, Dual, jacobian
 
 import Base: +, ==, getindex, size, axes, broadcasted, show, sum, vcat, convert, *
 

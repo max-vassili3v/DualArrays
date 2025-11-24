@@ -42,14 +42,15 @@ Defines how a frule in ChainRules.jl for a scalar function f should be broadcast
 function broadcast_rule(f, d::DualVector)
     val = similar(d.value)
     jac = similar(d.jacobian)
+    jacT = d.jacobian'
 
     @inbounds for (i, x) in pairs(d.value)
-        y, dy = ChainRules.frule((ChainRules.NoTangent(), d.jacobian[i, :]), f, x)
+        y, dy = ChainRules.frule((ChainRules.NoTangent(), sparse_getindex(jacT,:, i)), f, x)
         val[i] = y
-        jac[i, :] = dy
+        fast_setindex!(jac, dy, :, i)
     end
 
-    return DualVector(val, jac)
+    return DualVector(val, jac')
 end
 
 """

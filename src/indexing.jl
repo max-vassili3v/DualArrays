@@ -6,6 +6,11 @@ sparse_getindex(a...) = layout_getindex(a...)
 sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, size(D, 2))
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
 
+fast_setindex!(a...) = Base.setindex!(a...)
+
+function fast_setindex!(d::Diagonal, v::AbstractVector, ::Colon, i::Integer)
+    d.diag[i] = v[i]
+end
 """
 Extract a single Dual number from a DualVector at position y.
 """

@@ -1,5 +1,5 @@
 # Miscellaneous functions for DualArrays.jl
-
+using FillArrays
 """
 Sum all elements of a DualVector, returning a single Dual number.
 """
@@ -54,3 +54,16 @@ Custom display method for DualVectors.
 """
 Base.show(io::IO, ::MIME"text/plain", x::DualVector) = 
     (print(io, x.value); print(io, " + "); print(io, x.jacobian); print(io, "𝛜"))
+
+"""
+Utility function to compute the jacobian of a function f at point x.
+Analogous to ForwardDiff.jacobian.
+"""
+function jacobian(f::Function, x::Vector, broadcast::Bool=false)
+    d = DualVector(x, Eye(length(x)))
+    if broadcast
+        return f.(d).jacobian
+    else
+        return f(d).jacobian
+    end
+end
