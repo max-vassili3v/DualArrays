@@ -1,0 +1,56 @@
+# Miscellaneous functions for DualArrays.jl
+
+"""
+Sum all elements of a DualVector, returning a single Dual number.
+"""
+function Base.sum(x::DualVector)
+    n = length(x.value)
+    Dual(sum(x.value), vec(sum(x.jacobian; dims=1)))
+end
+
+# Helper functions for vcat operations
+_jacobian(d::Dual) = permutedims(d.partials)
+_jacobian(d::DualVector) = d.jacobian
+_jacobian(d::DualVector, ::Int) = d.jacobian
+_jacobian(x::Number, N::Int) = zeros(typeof(x), 1, N)
+
+_value(v::AbstractVector) = v
+_value(d::DualVector) = d.value
+_value(d::Dual) = d.value
+_value(x::Number) = x
+
+_size(x::Real) = 1
+_size(x::DualVector) = length(x.value)
+
+"""
+Vertically concatenate Dual numbers and DualVectors.
+"""
+function Base.vcat(x::Union{Dual, DualVector}...)
+    if length(x) == 1
+        return x[1]
+    end
+    value = vcat((d.value for d in x)...)
+    jacobian = vcat((_jacobian(d) for d in x)...)
+    DualVector(value, jacobian)
+end
+
+"""
+Vertically concatenate Real numbers and DualVectors.
+"""
+
+function Base.vcat(x::Union{Real, DualVector}...)
+    # Avoid stack overflow
+    if all(i -> i isa Real, x)
+        return Base.cat(x..., dims=1)
+    end
+    cols = maximum((_size(i) for i in x))
+    val = vcat((_value(i) for i in x)...)
+    jac = vcat((_jacobian(i, cols) for i in x)...)
+    DualVector(val, jac)
+end
+
+"""
+Custom display method for DualVectors.
+"""
+Base.show(io::IO, ::MIME"text/plain", x::DualVector) = 
+    (print(io, x.value); print(io, " + "); print(io, x.jacobian); print(io, "𝛜"))
