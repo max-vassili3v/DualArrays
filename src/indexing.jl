@@ -1,15 +1,20 @@
 # Indexing operations for DualArrays.jl
 
-using ArrayLayouts, FillArrays
+using ArrayLayouts, FillArrays, LinearAlgebra, SparseArrays
 
 sparse_getindex(a...) = layout_getindex(a...)
 sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, size(D, 2))
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
 
-fast_setindex!(a...) = Base.setindex!(a...)
-
-function fast_setindex!(d::Diagonal, v::AbstractVector, ::Colon, i::Integer)
-    d.diag[i] = v[i]
+function sparse_getindex(T::Tridiagonal, ::Colon, j::Integer)
+    n = size(T, 1)
+    if j == 1
+        return SparseVector(n, [1,2], [T.d[1], T.dl[1]])
+    elseif j == n
+        return SparseVector(n, [n-1,n], [T.du[n-1], T.d[n]])
+    else
+        return SparseVector(n, [j-1,j,j+1], [T.du[j-1], T.d[j], T.dl[j]])
+    end
 end
 """
 Extract a single Dual number from a DualVector at position y.

@@ -15,7 +15,7 @@ export DualVector, Dual, jacobian
 
 import Base: +, ==, getindex, size, axes, broadcasted, show, sum, vcat, convert, *
 
-using LinearAlgebra, ArrayLayouts, FillArrays
+using LinearAlgebra, ArrayLayouts, FillArrays, DiffRules
 
 include("types.jl")
 include("indexing.jl")
