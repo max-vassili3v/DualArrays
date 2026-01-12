@@ -12,6 +12,9 @@ using LinearAlgebra, ForwardDiff, Plots, DualArrays, FillArrays, BenchmarkTools,
 a = 0.4
 b = 0.0
 
+Tmax = 5.0
+ts = 0.01
+
 #LHS of ode
 function f(x)
     n = length(x)
@@ -59,7 +62,7 @@ end
 
 # Plot solution with obtainded through newtons method with DualArrays.
 # Used to verify correctness.
-function plot_solution(Tmax, ts)
+function plot_solution()
     n = Int(Tmax/ts) - 1
     x0 = zeros(Float64, n)
     sol = newton_method_dualvector(f, x0, 10)
