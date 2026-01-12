@@ -1,6 +1,6 @@
 ###
 # Illustration of computing times for jacobians
-# using DualArrays and ForwardDiff
+# using DualArrays and ForwardDiff.
 ###
 
 using DualArrays, ForwardDiff, Plots, BenchmarkTools
