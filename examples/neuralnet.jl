@@ -5,6 +5,8 @@ using Random
 using DualArrays
 using LinearAlgebra
 
+# TODO: Improve to use sparsity
+
 function xor_example()
     """
     Train a fully connected neural network to learn XOR using DualArrays
@@ -69,6 +71,8 @@ function differentiate_model(param, x, lengths, activations, loss)
             rows = collect((j:j + length(grad) - 1) for j = 1:length(grad):length(s))
             # Obtain each entry of W * x as a dot product and concatenate them
             grad = vcat([dot(s[r], grad) for r in rows]...)
+            # TODO: Do this with a DualMatrix implementation?
+
         # Even i corresponds to biases. We also apply the activation here.
         else
             # Bias vector
@@ -115,6 +119,7 @@ function train_model(ps, model, loss, x)
     activations = [model.layers[i].activation for i=1:length(model.layers)]
 
     # NOTE: This is a naive gradient descent algorithm. Not guaranteed to converge.
+    # TODO: Implement more advanced optimizers in this example.
     curr_loss = 0.0
     for _ = 1:50
         for (feature, label) in x
