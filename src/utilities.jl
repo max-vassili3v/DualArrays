@@ -26,9 +26,6 @@ _size(x::DualVector) = length(x.value)
 Vertically concatenate Dual numbers and DualVectors.
 """
 function Base.vcat(x::Union{Dual, DualVector}...)
-    if length(x) == 1
-        return x[1]
-    end
     value = vcat((d.value for d in x)...)
     jacobian = vcat((_jacobian(d) for d in x)...)
     DualVector(value, jacobian)
