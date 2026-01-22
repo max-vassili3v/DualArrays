@@ -37,7 +37,7 @@ function newton_method_dualvector(f, x0, n)
     x = x0
     l = length(x0)
     for i = 1:n
-        ∇f = jacobian(f, x; id=BandedMatrix)
+        ∇f = jacobian(f, x; id="banded")
         x = x - ∇f \ f(x)
     end
     x
