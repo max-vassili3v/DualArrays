@@ -19,7 +19,7 @@ function L(y, h, alpha, beta)
     return y_mid .* sqrt.(1 .+ dy.^2)
 end
 
-function learn_catenary(;n = 20, h = 0.1, alpha = cosh(-1), beta = cosh(1), epochs = 10000, lr = 0.01)
+function learn_catenary(;n = 19, h = 0.1, alpha = cosh(-1), beta = cosh(1), epochs = 2000, lr = 0.01)
     y = ones(n) * (alpha + beta) / 2
     for _ = 1:epochs
         jac = jacobian(y -> L(y, h, alpha, beta), y, id="banded")
