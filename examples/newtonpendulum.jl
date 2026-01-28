@@ -4,6 +4,9 @@
 # x'' + sin(x) = 0
 
 # via discretisation and Newton's method.
+
+# We observe that DualArrays.jl is able to solve this ODE
+# Accurately and in O(n) time.
 ##
 
 using LinearAlgebra, ForwardDiff, Plots, DualArrays, FillArrays, BenchmarkTools, BandedMatrices

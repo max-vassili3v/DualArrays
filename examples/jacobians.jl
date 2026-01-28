@@ -1,6 +1,12 @@
 ###
 # Illustration of computing times for jacobians
 # using DualArrays and ForwardDiff.
+#
+# We observe that for vector-valued functions with a sparse jacobian,
+# performance is significantly better using DualArrays.jl
+# i.e if an n x n matrix has O(n) nonzero entries, then
+# DualArrays.jl computes the jacobian in O(n) time.
+#
 ###
 
 using DualArrays, ForwardDiff, Plots, BenchmarkTools
