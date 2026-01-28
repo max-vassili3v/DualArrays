@@ -66,7 +66,7 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
         end
         @eval function Base.broadcasted(::typeof($f), x::DualVector, y::Dual)
             val = Base.$f.(x.value, y.value)
-            jac = Diagonal($p1.(x.value, y.value)) * x.jacobian + $p2.(x.value, y.value) * (y.partials')
+            jac = $p1.(x.value, y.value) .* x.jacobian .+ $p2.(x.value, y.value) .* (y.partials')
             return DualVector(val, jac)
         end
         @eval function Base.broadcasted(::typeof($f), x::Dual, y::DualVector)
