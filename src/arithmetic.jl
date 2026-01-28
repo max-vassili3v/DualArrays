@@ -51,7 +51,7 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
             jac = Diagonal(map($p, x.value)) * x.jacobian
             return DualVector(val, jac)
         end
-        @eval Base.$f(x::Dual) = Dual(Base.$f(x.value), vec($p(x.value) * (x.partials')))
+        @eval Base.$f(x::Dual) = Dual(Base.$f(x.value), $p(x.value) * x.partials)
     elseif n == 2
         p1, p2 = partials
         @eval function Base.broadcasted(::typeof($f), x::DualVector, y::Real)
