@@ -5,19 +5,15 @@ Addition/Subtraction of DualVectors.
 """
 
 for op in (:+, :-)
-    @eval Base.$op(x::DualVector, y::DualVector) = DualVector(Base.$op(x.value, y.value), Base.$op(x.jacobian, y.jacobian))
-    @eval Base.$op(x::DualVector, y::AbstractVector) = DualVector(Base.$op(x.value, y), x.jacobian)
-    @eval Base.$op(x::AbstractVector, y::DualVector) = DualVector(Base.$op(x, y.value), y.jacobian)
+    @eval $op(x::DualVector, y::DualVector) = DualVector($op(x.value, y.value), $op(x.jacobian, y.jacobian))
+    @eval $op(x::DualVector, y::AbstractVector) = DualVector($op(x.value, y), x.jacobian)
+    @eval $op(x::AbstractVector, y::DualVector) = DualVector($op(x, y.value), y.jacobian)
 end
 
 """
 Matrix multiplication with a DualVector.
 """
-Base.:*(x::AbstractMatrix, y::DualVector) = DualVector(x * y.value, x * y.jacobian)
-
-"""
-Broadcasted multiplication of two DualVectors using the product rule.
-"""
+*(x::AbstractMatrix, y::DualVector) = DualVector(x * y.value, x * y.jacobian)
 
 """
 this section attempts to define broadcasting rules on DualVectors for functions
@@ -44,42 +40,47 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
     partials = diff_fn(f, n)
     if n == 1
         p = partials[1]
-        @eval function Base.broadcasted(::typeof($f), x::DualVector)
-            val = Base.$f.(x.value)
-            jac = Diagonal(map($p, x.value)) * x.jacobian
+        @eval function broadcasted(::typeof($f), x::DualVector)
+            val = $f.(x.value)
+            jac = $p.(x.value) .* x.jacobian
             return DualVector(val, jac)
         end
-        @eval Base.$f(x::Dual) = Dual(Base.$f(x.value), vec($p(x.value) * (x.partials')))
+        # Must have Base.$f in order not to import everything
+        @eval Base.$f(x::Dual) = Dual($f(x.value), $p(x.value) * x.partials)
     elseif n == 2
         p1, p2 = partials
-        @eval function Base.broadcasted(::typeof($f), x::DualVector, y::Real)
-            val = Base.$f.(x.value, y)
+        @eval function broadcasted(::typeof($f), x::DualVector, y::Real)
+            val = $f.(x.value, y)
             jac = $p1.(x.value, y) .* x.jacobian
             return DualVector(val, jac)
         end
-        @eval function Base.broadcasted(::typeof($f), x::Real, y::DualVector)
-            val = Base.$f.(x, y.value)
+        @eval function broadcasted(::typeof($f), x::Real, y::DualVector)
+            val = $f.(x, y.value)
             jac = $p2.(x, y.value) .* y.jacobian
             return DualVector(val, jac)
         end
-        @eval function Base.broadcasted(::typeof($f), x::DualVector, y::Dual)
-            val = Base.$f.(x.value, y.value)
-            jac = $p1.(x.value, y.value) .* x.jacobian + $p2.(x.value, y.value) * (y.partials')
+        @eval function broadcasted(::typeof($f), x::DualVector, y::Dual)
+            val = $f.(x.value, y.value)
+            # Product rule
+            jac = $p1.(x.value, y.value) .* x.jacobian .+ $p2.(x.value, y.value) .* transpose(y.partials)
             return DualVector(val, jac)
         end
-        @eval function Base.broadcasted(::typeof($f), x::Dual, y::DualVector)
-            val = Base.$f.(x.value, y.value)
-            jac = $p1.(x.value, y.value) * (x.partials') + $p2.(x.value, y.value) .* y.jacobian
+        @eval function broadcasted(::typeof($f), x::Dual, y::DualVector)
+            val = $f.(x.value, y.value)
+            # Product rule
+            jac = $p1.(x.value, y.value) .* transpose(x.partials) .+ $p2.(x.value, y.value) .* y.jacobian
             return DualVector(val, jac)
         end
-        @eval function Base.broadcasted(::typeof($f), x::DualVector, y::DualVector)
-            val = Base.$f.(x.value, y.value)
-            jac = $p1.(x.value, y.value) .* x.jacobian + $p2.(x.value, y.value) .* y.jacobian
+        @eval function broadcasted(::typeof($f), x::DualVector, y::DualVector)
+            val = $f.(x.value, y.value)
+            # Product rule
+            jac = $p1.(x.value, y.value) .* x.jacobian .+ $p2.(x.value, y.value) .* y.jacobian
             return DualVector(val, jac)
         end
-        @eval Base.$f(x::Dual, y::Dual) = Dual(Base.$f(x.value, y.value), vec($p1(x.value, y.value) * (x.partials') + $p2(x.value, y.value) * (y.partials')))
-        @eval Base.$f(x::Dual, y::Real) = Dual(Base.$f(x.value, y), vec($p1(x.value, y) * (x.partials')))
-        @eval Base.$f(x::Real, y::Dual) = Dual(Base.$f(x, y.value), vec($p2(x, y.value) * (y.partials')))
+        # Must have Base.$f in order not to import everything
+        @eval Base.$f(x::Dual, y::Dual) = Dual($f(x.value, y.value), $p1(x.value, y.value) * x.partials + $p2(x.value, y.value) * y.partials)
+        @eval Base.$f(x::Dual, y::Real) = Dual($f(x.value, y), $p1(x.value, y) * x.partials)
+        @eval Base.$f(x::Real, y::Dual) = Dual($f(x, y.value), $p2(x, y.value) * y.partials)
     end
 end
 
@@ -90,6 +91,6 @@ Base.broadcasted(::typeof(Base.literal_pow), ::typeof(^), x::DualVector, ::Val{y
 Base.literal_pow(::typeof(^), x::Dual, ::Val{y}) where y = Dual(x.value ^ y, y * x.value^(y - 1) * x.partials)
 
 # inner product
-LinearAlgebra.dot(x::DualVector, y::DualVector) = Dual(dot(x.value, y.value), vec(y.value' * x.jacobian + x.value' * y.jacobian))
-LinearAlgebra.dot(x::DualVector, y::AbstractVector) = Dual(dot(x.value, y), vec(y' * x.jacobian))
-LinearAlgebra.dot(x::AbstractVector, y::DualVector) = Dual(dot(x, y.value), y.jacobian' * x)
+LinearAlgebra.dot(x::DualVector, y::DualVector) = Dual(dot(x.value, y.value), transpose(x.jacobian) * y.value + transpose(y.jacobian) * x.value)
+LinearAlgebra.dot(x::DualVector, y::AbstractVector) = Dual(dot(x.value, y), transpose(x.jacobian) * y)
+LinearAlgebra.dot(x::AbstractVector, y::DualVector) = Dual(dot(x, y.value), transpose(y.jacobian) * x)

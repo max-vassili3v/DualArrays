@@ -1,3 +1,9 @@
+##
+#
+# GOAL: Train a minimal neural network using a
+# simple gradient descent algorithm with DualArrays.jl
+#
+##
 using Lux
 using ForwardDiff
 using Plots
@@ -7,10 +13,10 @@ using LinearAlgebra
 
 # TODO: Improve to use sparsity
 
+"""
+Train a fully connected neural network to learn XOR using DualArrays
+"""
 function xor_example()
-    """
-    Train a fully connected neural network to learn XOR using DualArrays
-    """
     #Set up training data and neural network in Lux
     data = Dict(
         [0.0, 0.0] => 0.0,
@@ -42,11 +48,13 @@ function xor_example()
     end
 end
 
+"""
+Differentiate the loss of the model with respect to its parameters.
+Note: Ideally we would just propagate a NamedTuple of DualVectors
+using Lux.apply(), but this does not use sparsity so is inefficient.
+See 
+"""
 function differentiate_model(param, x, lengths, activations, loss)
-    """
-    Differentiate the loss of the model with respect to its parameters.
-    """
-
     # Initialize a dualvector and slice it as follows:
     # subparams[1] = weights of layer 1
     # subparams[2] = biases of layer 1
@@ -85,10 +93,12 @@ function differentiate_model(param, x, lengths, activations, loss)
     return grad
 end
 
+"""
+Pack the parameter vector into a Lux-style NamedTuple.
+This allows us to use the neural network through Lux after
+our training process using Lux.apply().
+"""
 function pack_params(paramvec, lengths)
-    """
-    Pack the parameter vector into a Lux-style NamedTuple
-    """
     ret = NamedTuple()
     nlayers = Int(length(lengths) / 2)
     keys = Symbol.("layer_" .* string.(1:nlayers))
@@ -108,7 +118,6 @@ function pack_params(paramvec, lengths)
 end
 
 function train_model(ps, model, loss, x)
-
     # Flatten parameters into a single vector.
     # We tranpose the weights matrix so that obtaining an entry of W * x is equivalent
     # to a dot product with a slice of the dual vector

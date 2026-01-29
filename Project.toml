@@ -16,9 +16,6 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-BenchmarkTools = "1.6.3"
-ChainRules = "1.72.6"
-ChainRulesCore = "1.26.0"
 DiffRules = "1.15.1"
 DifferentialEquations = "7.17.0"
 ForwardDiff = "1.2.2"

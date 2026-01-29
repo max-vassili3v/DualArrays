@@ -45,6 +45,10 @@ using DualArrays: Dual
     @testset "Arithmetic (Dual)" begin
         a = Dual(2., [1, 2, 3.])
         b = Dual(3., [4, 5, 6.])
+
+        @test b % 2 == Dual(1., [4, 5, 6.])
+        @test 4 / a == Dual(2., [-1, -2, -3.])
+
         @test a + b == Dual(5, [5, 7, 9])
         @test a - b == Dual(-1, [-3, -3, -3])
         @test a * b == Dual(6, [11, 16, 21])
@@ -61,9 +65,15 @@ using DualArrays: Dual
         w = DualVector([3, 4], [5 6; 7 8])
         @test dot(v, w) == Dual(11, [34, 44])
         @test dot(v, [0,1] ) == Dual(2, [3,4])
-        @test dot(w, [1,0] ) == Dual(3, [5,6])
+        @test dot([1,0], w) == Dual(3, [5,6])
     end
-    
+
+    @testset "Matrix multiplication" begin
+        M = [1 1; 1 1]
+        d = DualVector([2, 3], [4 5; 6 7])
+        @test M * d isa DualVector
+        @test M * d == DualVector([5,5],[10 12;10 12])
+    end
     @testset "vcat" begin
         x = Dual(1, [1, 2, 3])
         y = DualVector([2, 3], [4 5 6;7 8 9])
