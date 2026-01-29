@@ -51,7 +51,8 @@ end
 """
 Differentiate the loss of the model with respect to its parameters.
 Note: Ideally we would just propagate a NamedTuple of DualVectors
-using Lux.apply(), but this is 
+using Lux.apply(), but this does not use sparsity so is inefficient.
+See 
 """
 function differentiate_model(param, x, lengths, activations, loss)
     # Initialize a dualvector and slice it as follows:

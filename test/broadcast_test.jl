@@ -47,7 +47,7 @@ using DualArrays, Test, SparseArrays, LinearAlgebra
     @test a.jacobian ≈ d.jacobian
     @test s.jacobian ≈ -d.jacobian
     @test m.jacobian ≈ 4.0 * d.jacobian
-    @test div.jacobian ≈ -8.0 ./ (d.value .^ 2) .* d.jacobian
+    @test div.jacobian ≈ (-8.0 ./ (d.value .^ 2)) .* d.jacobian
 
     # Test broadcasting with binary operations on a Dual and DualVector
     x = Dual(2.0, [1.0, 2.0, 3.0])
