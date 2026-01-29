@@ -94,7 +94,9 @@ function differentiate_model(param, x, lengths, activations, loss)
 end
 
 """
-Pack the parameter vector into a Lux-style NamedTuple
+Pack the parameter vector into a Lux-style NamedTuple.
+This allows us to use the neural network through Lux after
+our training process using Lux.apply().
 """
 function pack_params(paramvec, lengths)
     ret = NamedTuple()

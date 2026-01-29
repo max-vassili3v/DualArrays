@@ -3,14 +3,14 @@
 """
 Addition of DualVectors.
 """
-Base.:+(x::DualVector, y::DualVector) = DualVector(x.value + y.value, x.jacobian + y.jacobian)
-Base.:+(x::DualVector, y::AbstractVector) = DualVector(x.value + y, x.jacobian)
-Base.:+(x::AbstractVector, y::DualVector) = DualVector(x + y.value, y.jacobian)
++(x::DualVector, y::DualVector) = DualVector(x.value + y.value, x.jacobian + y.jacobian)
++(x::DualVector, y::AbstractVector) = DualVector(x.value + y, x.jacobian)
++(x::AbstractVector, y::DualVector) = DualVector(x + y.value, y.jacobian)
 
 """
 Matrix multiplication with a DualVector.
 """
-Base.:*(x::AbstractMatrix, y::DualVector) = DualVector(x * y.value, x * y.jacobian)
+*(x::AbstractMatrix, y::DualVector) = DualVector(x * y.value, x * y.jacobian)
 
 """
 this section attempts to define broadcasting rules on DualVectors for functions
