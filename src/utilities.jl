@@ -57,7 +57,8 @@ Utility function to compute the jacobian of a function `f` at point `x`.
 Analogous to `ForwardDiff.jacobian`.
 
 `id` selects the type of (sparse) identity to use and must be either `Eye` (default) or `BandedMatrix`.
-function jacobian(f::Function, x::AbstractVector; id=Eye)
+"""
+function jacobian(f::Function, x::AbstractVector, id=Eye)
     local J
     if id === Eye
         J = Eye(length(x))
