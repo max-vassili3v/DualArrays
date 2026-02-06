@@ -1,5 +1,5 @@
 # Miscellaneous functions for DualArrays.jl
-
+using FillArrays, BandedMatrices, LinearAlgebra
 """
 Sum all elements of a DualVector, returning a single Dual number.
 """
@@ -12,7 +12,7 @@ end
 _jacobian(d::Dual) = permutedims(d.partials)
 _jacobian(d::DualVector) = d.jacobian
 _jacobian(d::DualVector, ::Int) = d.jacobian
-_jacobian(x::Number, N::Int) = zeros(typeof(x), 1, N)
+_jacobian(x::Number, N::Int) = Zeros(typeof(x), 1, N)
 
 _value(v::AbstractVector) = v
 _value(d::DualVector) = d.value
@@ -26,9 +26,6 @@ _size(x::DualVector) = length(x.value)
 Vertically concatenate Dual numbers and DualVectors.
 """
 function Base.vcat(x::Union{Dual, DualVector}...)
-    if length(x) == 1
-        return x[1]
-    end
     value = vcat((d.value for d in x)...)
     jacobian = vcat((_jacobian(d) for d in x)...)
     DualVector(value, jacobian)
@@ -54,3 +51,22 @@ Custom display method for DualVectors.
 """
 Base.show(io::IO, ::MIME"text/plain", x::DualVector) = 
     (print(io, x.value); print(io, " + "); print(io, x.jacobian); print(io, "𝛜"))
+
+"""
+Utility function to compute the jacobian of a function `f` at point `x`.
+Analogous to `ForwardDiff.jacobian`.
+
+`id` selects the type of (sparse) identity to use and must be either `Eye` (default) or `BandedMatrix`.
+"""
+function jacobian(f::Function, x::AbstractVector, id=Eye)
+    local J
+    if id === Eye
+        J = Eye(length(x))
+    elseif id === BandedMatrix
+        J = BandedMatrix(I(length(x)), (0, 0))
+    else
+        J = Matrix(I(length(x)))
+    end
+    d = DualVector(x, J)
+    return f(d).jacobian
+end

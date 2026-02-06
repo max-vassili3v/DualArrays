@@ -1,6 +1,6 @@
 # Indexing operations for DualArrays.jl
 
-using ArrayLayouts, FillArrays
+using ArrayLayouts, FillArrays, LinearAlgebra, SparseArrays
 
 sparse_getindex(a...) = layout_getindex(a...)
 sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, size(D, 2))

@@ -4,18 +4,19 @@
 # x'' + sin(x) = 0
 
 # via discretisation and Newton's method.
+
+# We observe that DualArrays.jl is able to solve this ODE
+# Accurately and in O(n) time.
 ##
 
-using LinearAlgebra, ForwardDiff, Plots, DualArrays
+using LinearAlgebra, ForwardDiff, Plots, DualArrays, FillArrays, BenchmarkTools, BandedMatrices
 
 #Boundary Conditions
-a = 0.1
+a = 0.4
 b = 0.0
 
-#Time step, Time period and number of x for discretisation.
-ts = 0.001
 Tmax = 5.0
-N = Int(Tmax/ts) - 1
+ts = 0.01
 
 #LHS of ode
 function f(x)
@@ -24,7 +25,7 @@ function f(x)
     (D * [a; x; b])[2:end-1] + sin.(x)
 end
 
-#Newtons method using ForwardDiff.jl
+#Newton's method using ForwardDiff.jl
 function newton_method_forwarddiff(f, x0, n)
     x = x0
     for i = 1:n
@@ -34,22 +35,40 @@ function newton_method_forwarddiff(f, x0, n)
     x
 end
 
+#Newton's method using DualArrays.jl
 function newton_method_dualvector(f, x0, n)
     x = x0
     l = length(x0)
     for i = 1:n
-        ∇f = f(DualVector(x, Matrix(I, l, l))).jacobian
+        ∇f = jacobian(f, x, BandedMatrix)
         x = x - ∇f \ f(x)
     end
     x
 end
 
-#Initial guess
-x0 = zeros(Float64, N)
+# Plot times for Newton's method using DualArrays and ForwardDiff
+function plot_times()
+    ns = [10, 50, 100, 200, 500]
+    dualvector_times = Float64[]
+    forwarddiff_times = Float64[]
 
-#Solve and plot both solution and LHS ('deviation' from system)
-@time sol = newton_method_forwarddiff(f, x0, 10)
-@time sol = newton_method_dualvector(f, x0, 10)
-plot(0:ts:Tmax, [a; sol; b])
-plot!(0:ts:Tmax, [0; f(sol); 0])
+    for n in ns
+        println("Computing solution with n = $n")
+        x0 = zeros(Float64, n)
+        push!(dualvector_times, @belapsed newton_method_dualvector(f, $x0, 10))
+        push!(forwarddiff_times, @belapsed newton_method_forwarddiff(f, $x0, 10))
+    end
 
+    plot(ns, dualvector_times, label="DualArrays")
+    plot!(ns, forwarddiff_times, label="ForwardDiff")
+end
+
+# Plot solution with obtainded through newtons method with DualArrays.
+# Used to verify correctness.
+function plot_solution()
+    n = Int(Tmax/ts) - 1
+    x0 = zeros(Float64, n)
+    sol = newton_method_dualvector(f, x0, 10)
+    t = ts:ts:(n * ts)
+    plot(t, sol, label="Pendulum Solution", xlabel="Time", ylabel="Angle")
+end
