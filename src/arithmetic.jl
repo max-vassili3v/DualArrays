@@ -1,11 +1,14 @@
 # Arithmetic operations for DualArrays.jl
 
 """
-Addition of DualVectors.
+Addition/Subtraction of DualVectors.
 """
-+(x::DualVector, y::DualVector) = DualVector(x.value + y.value, x.jacobian + y.jacobian)
-+(x::DualVector, y::AbstractVector) = DualVector(x.value + y, x.jacobian)
-+(x::AbstractVector, y::DualVector) = DualVector(x + y.value, y.jacobian)
+
+for op in (:+, :-)
+    @eval $op(x::DualVector, y::DualVector) = DualVector($op(x.value, y.value), $op(x.jacobian, y.jacobian))
+    @eval $op(x::DualVector, y::AbstractVector) = DualVector($op(x.value, y), x.jacobian)
+    @eval $op(x::AbstractVector, y::DualVector) = DualVector($op(x, y.value), y.jacobian)
+end
 
 """
 Matrix multiplication with a DualVector.
@@ -81,8 +84,11 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
     end
 end
 
-# Disambiguity
+# Special cases: integer powers
 Base.:^(x::Dual, y::Integer) = Dual(x.value ^ y, y * x.value^(y - 1) * x.partials)
+Base.broadcasted(::typeof(^), x::DualVector, y::Integer) = DualVector(x.value .^ y, y * x.value .^ (y - 1) .* x.jacobian)
+Base.broadcasted(::typeof(Base.literal_pow), ::typeof(^), x::DualVector, ::Val{y}) where y = DualVector(x.value .^ y, y * x.value .^ (y - 1) .* x.jacobian)
+Base.literal_pow(::typeof(^), x::Dual, ::Val{y}) where y = Dual(x.value ^ y, y * x.value^(y - 1) * x.partials)
 
 # inner product
 LinearAlgebra.dot(x::DualVector, y::DualVector) = Dual(dot(x.value, y.value), transpose(x.jacobian) * y.value + transpose(y.jacobian) * x.value)
