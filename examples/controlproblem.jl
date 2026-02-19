@@ -1,5 +1,17 @@
 using LinearAlgebra, DualArrays, Plots
 
+# This example follows the following:
+# https://www.dolfin-adjoint.org/en/tube_shape_derivative_demo/documentation/poisson-mother/poisson-mother.html
+# We solve this numerically by using DualArrays to do the following:
+#
+# - Solve for the state variable u from Ku = f, where K is the discretised Laplacian
+# - Solve the adjoint problem Kp = u - d, where d is the desired state
+# - Analytically, we have ∇J(f) = α f + p.
+#
+# If we propagate f as a DualVector above, we get the f.jacobian as the Hessian of J,
+# and this enables us to solve via newton's method.
+
+
 function grad_objective(K, f, d, h, kappa, alpha)
     u = K \ f
     p = K \ (u - d)
@@ -23,6 +35,7 @@ function solve_2D(x0, d, h, kappa, alpha, iters = 30)
     fvector = copy(x0)
     n = isqrt(length(x0))
     T = Tridiagonal(-ones(n - 1), 2 * ones(n), -ones(n - 1))
+    # 2D Discrete Laplacian
     K = (kappa / h ^ 2) * (kron(I(n), T) + kron(T, I(n)))
     for _ = 1:iters
         grads = grad_objective(K, DualVector(fvector, I(length(fvector))), d, h, kappa, alpha)
