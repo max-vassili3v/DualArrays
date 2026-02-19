@@ -68,6 +68,12 @@ using DualArrays: Dual
         @test dot([1,0], w) == Dual(3, [5,6])
     end
 
+    @testset "Solve" begin
+        A = [1 1; 1 -1]
+        b = DualVector([2, 0], [3 4; 0 0])
+        @test A \ b == DualVector([1, 1], [1.5 2; 1.5 2])
+    end
+
     @testset "Matrix multiplication" begin
         M = [1 1; 1 1]
         d = DualVector([2, 3], [4 5; 6 7])
