@@ -94,3 +94,6 @@ Base.literal_pow(::typeof(^), x::Dual, ::Val{y}) where y = Dual(x.value ^ y, y *
 LinearAlgebra.dot(x::DualVector, y::DualVector) = Dual(dot(x.value, y.value), transpose(x.jacobian) * y.value + transpose(y.jacobian) * x.value)
 LinearAlgebra.dot(x::DualVector, y::AbstractVector) = Dual(dot(x.value, y), transpose(x.jacobian) * y)
 LinearAlgebra.dot(x::AbstractVector, y::DualVector) = Dual(dot(x, y.value), transpose(y.jacobian) * x)
+
+# solve
+\(x::AbstractMatrix, y::DualVector) = DualVector(x \ y.value, x \ y.jacobian)
