@@ -63,14 +63,13 @@ Analogous to `ForwardDiff.jacobian`.
 
 `id` selects the type of (sparse) identity to use and must be either `Eye` (default) or `BandedMatrix`.
 """
-function jacobian(f::Function, x::Vector; id="eye")
-    local J
-    if id === "eye"
-        J = Eye(length(x))
-    elseif id === "banded"
-        J = BandedMatrix(I(length(x)), (0, 0))
+function jacobian(f::Function, x::AbstractVector, id=Eye)
+    J = if id === Eye
+        Eye(length(x))
+    elseif id === BandedMatrix
+        BandedMatrix(I(length(x)), (0, 0))
     else
-        J = Matrix(I(length(x)))
+        Matrix(I(length(x)))
     end
     d = DualVector(x, J)
     return f(d).jacobian
