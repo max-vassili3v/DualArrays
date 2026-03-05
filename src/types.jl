@@ -14,6 +14,20 @@ struct Dual{T, Partials <: AbstractVector{T}} <: Real
     partials::Partials
 end
 
+function Dual(value::T, partials::AbstractVector{S}) where {T, S}
+    T2 = promote_type(T, S)
+    val = T2(value)
+    partials = _convert(T2, partials)
+    Dual(val, partials)
+end
+
+Dual{T, P}(x) where {T, P <: AbstractVector{T}} =
+    Dual{T, P}(convert(T, x), convert(P, T[]))
+
+promote_type(::Type{<:Dual{T1}}, ::Type{<:Dual{T2}}) where {T1, T2} =
+    Dual{promote_type(T1, T2)}
+
+
 """
     DualVector{T, V <: AbstractVector{T}, M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
 
@@ -45,13 +59,28 @@ struct DualVector{T, V <: AbstractVector{T},M <: AbstractMatrix{T}} <: AbstractV
     end
 end
 
+_convert(T::Type, x::AbstractArray) = T.(x)
+_convert(::Type{Dual{T}}, x::DualVector) where {T} = DualVector(_convert(T, x.value), _convert(T, x.jacobian))
+
+
 """
 Constructor that forces type compatibility
 """
 function DualVector(value::AbstractVector, jacobian::AbstractMatrix)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualVector(T.(value), T.(jacobian))
+    value_T = _convert(T, value)
+    jacobian_T = _convert(T, jacobian)
+    DualVector(value_T, jacobian_T)
 end
+
+function DualMatrix(value::AbstractMatrix, jacobian::AbstractArray{<:Any, 4})
+    T = promote_type(eltype(value), eltype(jacobian))
+    value_T = _convert(T, value)
+    jacobian_T = _convert(T, jacobian)
+    DualMatrix(value_T, jacobian_T)
+end
+
+
 
 """
 DualMatrix{T, M <: AbstractMatrix{T}, A <: AbstractArray{T, 4}} <: AbstractMatrix{Dual{T}}
@@ -76,6 +105,11 @@ struct DualMatrix{T, M <: AbstractMatrix{T}, A <: AbstractArray{T, 4}} <: Abstra
     value::M
     jacobian::A
 end
+
+_convert(::Type{Dual{T}}, x::DualMatrix) where {T} = DualMatrix(_convert(T, x.value), _convert(T, x.jacobian)) 
+
+# Alias for convenience
+DualArray = Union{DualVector, DualMatrix}
 
 # Basic equality for Dual numbers
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials

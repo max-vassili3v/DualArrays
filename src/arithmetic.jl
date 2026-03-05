@@ -36,6 +36,11 @@ function diff_fn(f, n)
     return map(dx -> makepartials(dx, syms), d)
 end
 
+_one(x) = one(x)
+_one(x::Dual) = Dual(one(x.value), zero(x.partials))
+
+DiffRules.@define_diffrule Base.:+(x, y) = :(_one(x)), :(_one(y))
+
 for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
     partials = diff_fn(f, n)
     if n == 1
@@ -78,9 +83,9 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
             return DualVector(val, jac)
         end
         # Must have Base.$f in order not to import everything
-        @eval Base.$f(x::Dual, y::Dual) = Dual($f(x.value, y.value), $p1(x.value, y.value) * x.partials + $p2(x.value, y.value) * y.partials)
-        @eval Base.$f(x::Dual, y::Real) = Dual($f(x.value, y), $p1(x.value, y) * x.partials)
-        @eval Base.$f(x::Real, y::Dual) = Dual($f(x, y.value), $p2(x, y.value) * y.partials)
+        @eval Base.$f(x::Dual, y::Dual) = Dual($f(x.value, y.value), $p1(x.value, y.value) .* x.partials + $p2(x.value, y.value) .* y.partials)
+        @eval Base.$f(x::Dual, y::Real) = Dual($f(x.value, y), $p1(x.value, y) .* x.partials)
+        @eval Base.$f(x::Real, y::Dual) = Dual($f(x, y.value), $p2(x, y.value) .* y.partials)
     end
 end
 
