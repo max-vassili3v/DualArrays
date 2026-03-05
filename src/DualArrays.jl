@@ -13,7 +13,7 @@ module DualArrays
 
 export DualVector, Dual, jacobian, DualMatrix
 
-import Base: +, -, ==, getindex, size, axes, broadcasted, show, sum, vcat, convert, *, isapprox, promote_type, convert
+import Base: +, -, ==, getindex, size, axes, broadcasted, show, sum, vcat, convert, *, isapprox, promote_type, convert, one
 
 using LinearAlgebra, ArrayLayouts, FillArrays, DiffRules
 

@@ -62,22 +62,11 @@ end
 _convert(T::Type, x::AbstractArray) = T.(x)
 _convert(::Type{Dual{T}}, x::DualVector) where {T} = DualVector(_convert(T, x.value), _convert(T, x.jacobian))
 
-
-"""
-Constructor that forces type compatibility
-"""
 function DualVector(value::AbstractVector, jacobian::AbstractMatrix)
     T = promote_type(eltype(value), eltype(jacobian))
     value_T = _convert(T, value)
     jacobian_T = _convert(T, jacobian)
     DualVector(value_T, jacobian_T)
-end
-
-function DualMatrix(value::AbstractMatrix, jacobian::AbstractArray{<:Any, 4})
-    T = promote_type(eltype(value), eltype(jacobian))
-    value_T = _convert(T, value)
-    jacobian_T = _convert(T, jacobian)
-    DualMatrix(value_T, jacobian_T)
 end
 
 
@@ -104,6 +93,13 @@ tangents.
 struct DualMatrix{T, M <: AbstractMatrix{T}, A <: AbstractArray{T, 4}} <: AbstractMatrix{Dual{T}}
     value::M
     jacobian::A
+end
+
+function DualMatrix(value::AbstractMatrix{T}, jacobian::AbstractArray{S, 4}) where {T, S}
+    T2 = promote_type(T, S)
+    val = _convert(T2, value)
+    jac = _convert(T2, jacobian)
+    DualMatrix(val, jac)
 end
 
 _convert(::Type{Dual{T}}, x::DualMatrix) where {T} = DualMatrix(_convert(T, x.value), _convert(T, x.jacobian)) 

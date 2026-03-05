@@ -36,10 +36,8 @@ function diff_fn(f, n)
     return map(dx -> makepartials(dx, syms), d)
 end
 
-_one(x) = one(x)
-_one(x::Dual) = Dual(one(x.value), zero(x.partials))
-
-DiffRules.@define_diffrule Base.:+(x, y) = :(_one(x)), :(_one(y))
+# We redefine one here since it is required for the derivative of + and -.
+one(x::Dual) = Dual(one(x.value), zero(x.partials))
 
 for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
     partials = diff_fn(f, n)
