@@ -15,13 +15,11 @@ struct Dual{T, Partials <: AbstractVector{T}} <: Real
 end
 
 """
-    DualVector{T, M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
+    DualVector{T, V <: AbstractVector{T}, M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
 
 Represents a vector of dual numbers given by:
     
     values + jacobian * [ε₁, …, εₙ]
-
-For now the entries just return the values when indexed.
 
 # Fields
 - `value::Vector{T}`: The primal values
@@ -52,7 +50,31 @@ Constructor that forces type compatibility
 """
 function DualVector(value::AbstractVector, jacobian::AbstractMatrix)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualVector(convert(Vector{T}, value), convert(AbstractMatrix{T}, jacobian))
+    DualVector(T.(value), T.(jacobian))
+end
+
+"""
+DualMatrix{T, M <: AbstractMatrix{T}, A <: AbstractArray{T, 4}} <: AbstractMatrix{Dual{T}}
+
+Represents a matrix of dual numbers given by:
+
+values + jacobian * [ϵ₁₁ ϵ₁₂ … ϵ₁ₘ
+                     ϵ₂₁ ϵ₂₂ … ϵ₂ₘ
+                     ⋮    ⋮   ⋱   ⋮
+                     ϵₙ₁ ϵₙ₂ … ϵₙₘ]
+
+Where the jacobian here is a 4D tensor. This is contracted with with the matrix of ϵs
+as follows:
+
+Dᵢⱼ = ∑ₖₗ Jᵢⱼₖₗ ϵₖₗ
+
+Where J is the jacobian tensor, ϵ is the matrix of ϵs, and D is the resulting matrix of
+tangents.
+"""
+
+struct DualMatrix{T, M <: AbstractMatrix{T}, A <: AbstractArray{T, 4}} <: AbstractMatrix{Dual{T}}
+    value::M
+    jacobian::A
 end
 
 # Basic equality for Dual numbers
