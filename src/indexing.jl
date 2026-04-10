@@ -7,6 +7,20 @@ sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, siz
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
 
 """
+For the purposes of DualArrays.jl, we need to be able to index on the input indices
+(corresponding to the the primal values) only. This way, when we index, we still get the
+same 'arrangement' of dual parts. Example in the DualVector case (where the Jacobian is
+a Tensor{2, Float64, 1, 1} acting on a vector ϵ):
+
+d = a + Jϵ
+d[1] = a[1] + J[1,:]ϵ
+
+J[1, :] is a row vector so it can still be applied to our ϵ.
+"""
+getindex(t::Tensor{L, T, N, M}, i::NTuple{N, Int}, ::Colon) where {L, T, N, M} = sparse_getindex(t.data, i..., ntuple(_ -> Colon(), M)...)
+getindex(t::Tensor, i...) = t.data[i...]
+
+"""
 Extract a single Dual number from a DualVector at position y.
 """
 function Base.getindex(x::DualVector, y::Int)

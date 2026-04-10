@@ -5,6 +5,7 @@ using DualArrays: Dual
     
     @testset "Type Definition" begin
         @test_throws ArgumentError DualVector([1,2],I(3))
+        @test Dual(1.0, [1, 2, 3]).partials == Tensor{0, 1}([1.0, 2.0, 3.0])
     end
     
     @testset "Indexing" begin
