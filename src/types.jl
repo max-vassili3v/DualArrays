@@ -149,6 +149,34 @@ function DualVector(value::AbstractVector, jacobian::AbstractArray{T, N}) where 
     DualVector(value, Tensor{1}(jacobian))
 end
 
+"""
+    DualMatrix{T, M <: AbstractMatrix{T}, J } <: AbstractMatrix{Dual{T}}
+"""
+
+struct DualMatrix{T, M <: AbstractMatrix{T}, J <: (Tensor{L, T, 2, M} where {L, M})} <: AbstractMatrix{Dual{T}}
+    value::M
+    jacobian::J
+
+    function DualMatrix(value::M, jacobian::J) where {T, M <: AbstractMatrix{T}, J <: (Tensor{L, T, 2, N} where {L, N})}
+        if size(value, 1) != size(jacobian, 1) || size(value, 2) != size(jacobian, 2)
+            throw(ArgumentError("Dimensions of value matrix must match inner dimensions of Jacobian tensor."))
+        end
+        new{T, M, J}(value, jacobian)
+    end
+end
+
+function DualMatrix(value::AbstractMatrix, jacobian::Tensor)
+    T = promote_type(eltype(value), eltype(jacobian))
+    DualMatrix(_convert_array(T, value), _convert_array(T, jacobian))
+end
+
+function DualMatrix(value::AbstractMatrix, jacobian::AbstractArray{T, N}) where {T, N}
+    DualMatrix(value, Tensor{2}(jacobian))
+end
+
+# For convenience
+DualArray = Union{DualVector, DualMatrix}
+
 # Basic equality for Dual numbers
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials
 isapprox(a::Dual, b::Dual) = isapprox(a.value, b.value) && isapprox(a.partials, b.partials)

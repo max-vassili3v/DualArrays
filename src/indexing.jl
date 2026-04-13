@@ -41,12 +41,10 @@ function getindex(x::DualVector, y::UnitRange)
     DualVector(newval, newjac)
 end
 
-"""
-Return the size of the DualVector (length of the value vector).
-"""
-size(x::DualVector) = (length(x.value),)
+function getindex(x::DualMatrix, y::Vararg{Int})
+    Dual(x.value[y...], x.jacobian[y..., :])
+end
 
-"""
-Return the axes of the DualVector.
-"""
-axes(x::DualVector) = axes(x.value)
+# Array interface for DualArray
+size(x::DualArray) = (length(x.value),)
+axes(x::DualArray) = axes(x.value)
