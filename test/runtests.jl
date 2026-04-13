@@ -1,11 +1,11 @@
 using DualArrays, Test, LinearAlgebra, ForwardDiff, BandedMatrices
-using DualArrays: Dual
+using DualArrays: Tensor
 
 @testset "DualArrays" begin
     
     @testset "Type Definition" begin
         @test_throws ArgumentError DualVector([1,2],I(3))
-        @test Dual(1.0, [1, 2, 3]).partials == Tensor{0, 1}([1.0, 2.0, 3.0])
+        @test Dual(1.0, [1, 2, 3]).partials == Tensor{0}([1.0, 2.0, 3.0])
     end
     
     @testset "Indexing" begin
@@ -23,7 +23,7 @@ using DualArrays: Dual
 
         n = 10
         v = DualVector(1:n, I(n))
-        @test v[2:end].jacobian isa BandedMatrix
+        @test v[2:end].jacobian.data isa BandedMatrix
 
         @test sum(v[1:end-1] .* v[2:end]).partials == ForwardDiff.gradient(v -> sum(v[1:end-1] .* v[2:end]), 1:n)
     end
@@ -90,4 +90,5 @@ using DualArrays: Dual
     end
     
     include("broadcast_test.jl")
+    include("tensor_test.jl")
 end

@@ -49,7 +49,7 @@ end
 """
 Custom display method for DualVectors.
 """
-Base.show(io::IO, ::MIME"text/plain", x::DualVector) = 
+show(io::IO, ::MIME"text/plain", x::DualVector) = 
     (print(io, x.value); print(io, " + "); print(io, x.jacobian); print(io, "𝛜"))
 
 """

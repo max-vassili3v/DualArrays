@@ -11,7 +11,7 @@ We have:
 -N is the dimensionality of the input array/number of lower indices
 -M is the dimensionality of the output array/number of upper indices
 
-We enforce L = N + M.
+We enforce L = N + M by inferring M in the constructor.
 
 In the context of DualArrays.jl, a DualArray (currently only a vector) can be thought of as
 
@@ -24,20 +24,62 @@ struct Tensor{L, T, N, M} <: AbstractArray{T, L}
     data::AbstractArray{T, L}
 end
 
-function Tensor{N,M}(data::AbstractArray{T, L}) where {L, T, N, M}
-    if L != N + M
-        throw(ArgumentError("Tensor order must be equivalent to N + M."))
-    end
-    Tensor{L, T, N, M}(data)
+# Constructor to wrap an array with a tensor, given a contraction rule represented by N
+function Tensor{N}(data::AbstractArray{T, L}) where {L, T, N}
+    Tensor{L, T, N, L - N}(data)
 end
 
-Base.convert(::Type{Tensor{L, T, N, M}}, tensor::Tensor{L, S, N, M}) where {L, T, N, M, S} =
-    Tensor{N, M}(convert.(T, tensor.data))
+# Helper convert function
+_convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
+_convert_array(::Type{T}, t::Tensor{L, S, N, M}) where {T, L, S, N, M} = Tensor{L, T, N, M}(_convert_array(T, t.data))
 
+Base.convert(::Type{Tensor{L, T, N, M}}, tensor::Tensor{L, S, N, M}) where {L, T, N, M, S} =
+    Tensor{L, T, N, M}(_convert_array(T, tensor.data))
+
+# Basic array interface
 for op in (:size, :axes)
     @eval begin
         ($op)(t::Tensor) = ($op)(t.data)
+        ($op)(t::Tensor, i...) = ($op)(t.data, i...)
     end
+end
+
+# Below we define a broadcast style for Tensors and override copy and copyto!
+# This allows all arithmetic/broadcasting with Tensors to be handled by the
+# underlying logic of the array contained in the struct, while ensuring that
+# all results stay as a Tensor.
+
+struct TensorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{1} end
+TensorBroadcastStyle{N}(::Val{M}) where {N, M} = TensorBroadcastStyle{N}()
+
+# N is the input dimension of the tensor being broadcasted.
+# For he result of the broadcast we will choose to preserve the highest input dimension. 
+Base.BroadcastStyle(::Type{<:Tensor{<:Any, <:Any, N, <:Any}}) where {N} = TensorBroadcastStyle{N}()
+Base.BroadcastStyle(::TensorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{0}) where {N} = TensorBroadcastStyle{N}()
+Base.BroadcastStyle(::TensorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{1}) where {N} = TensorBroadcastStyle{N}()
+Base.BroadcastStyle(::TensorBroadcastStyle{N}, ::TensorBroadcastStyle{M}) where {N, M} = TensorBroadcastStyle{max(N, M)}()
+
+# Helper functions to help define broadcasting/arithmetic with Tensors.
+# By converting a broadcast involving Tensors into a broadcast
+# involving the underlying arrays.
+_unwrap(t::Tensor) = t.data
+_unwrap(x) = x
+_unwrap_args(args::Tuple) = map(_unwrap, args)
+
+# copy ensures that arithmetic involving a Tensor returns a Tensor
+function Base.copy(bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
+    # We create a Broadcasted of the underlying arrays and create a Tensor containing
+    # the evaluated broadcast
+    databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
+    Tensor{N}(copy(Broadcast.flatten(databroadcast)))
+end
+
+# copyto adds support for .=
+function Base.copyto!(dest::Tensor, bc::Broadcast.Broadcasted{TensorBroadcastStyle})
+    # As above
+    databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
+    copyto!(dest.data, Broadcast.flatten(databroadcast))
+    dest
 end
 
 """
@@ -61,7 +103,7 @@ end
 
 # Helper function to define Duals from an AbstractArray
 function Dual(value, partials::AbstractArray{T, N}) where {T, N}
-    Dual(value, Tensor{0, N}(partials))
+    Dual(value, Tensor{0}(partials))
 end
 
 """
@@ -82,27 +124,29 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualVector{T, V <: AbstractVector{T},M <: (Tensor{L, T, 1, M} where {L, M})} <: AbstractVector{Dual{T}}
+struct DualVector{T, V <: AbstractVector{T},J <: (Tensor{L, T, 1, M} where {L, M})} <: AbstractVector{Dual{T}}
     value::V
-    jacobian::M
+    jacobian::J
 
-    function DualVector(value::V, jacobian::M) where {T, V <: AbstractVector{T}, M <: AbstractMatrix{T}}
-        if size(jacobian, 1) != length(value)
-            x, y = length(value), size(jacobian, 1)
-            throw(ArgumentError("vector length must match number of rows in jacobian.\n" *
-                               "vector length: $x\n" *
-                               "no. of jacobian rows: $y"))
+    function DualVector(value::V, jacobian::J) where {T, V <: AbstractVector{T}, J <: (Tensor{L, T, 1, M} where {L, M})}
+        if length(value) != size(jacobian, 1)
+            throw(ArgumentError("Length of value vector must match number of rows in Jacobian."))
         end
-        new{T,V, M}(value, jacobian)
+        new{T, V, J}(value, jacobian)
     end
 end
 
 """
 Constructor that forces type compatibility
 """
-function DualVector(value::AbstractVector, jacobian::AbstractMatrix)
+function DualVector(value::AbstractVector, jacobian::Tensor)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualVector(convert(Vector{T}, value), convert(AbstractMatrix{T}, jacobian))
+    DualVector(_convert_array(T, value), _convert_array(T, jacobian))
+end
+
+# Helper function to define DualVectors with AbstractArray jacobians
+function DualVector(value::AbstractVector, jacobian::AbstractArray{T, N}) where {T, N}
+    DualVector(value, Tensor{1}(jacobian))
 end
 
 # Basic equality for Dual numbers
