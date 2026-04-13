@@ -5,8 +5,13 @@ using DualArrays: Tensor
     t = Tensor{1}([1 2 3;4 5 6;7 8 9])
     @testset "Indexing" begin
         @test t[1,1] == 1
-        @test t[(1,), :] == Tensor{0}([1, 2, 3])
+        @test t[(1,), (:,)] == Tensor{0}([1, 2, 3])
         @test t[1:2, 1:2] == Tensor{1}([1 2;4 5])
+
+        s = Tensor{2}(ones(2,2,2))
+        @test s[(1,1), (:,)] == Tensor{0}([1, 1])
+        @test s[(1,:), (:,)] == Tensor{1}([1 1;1 1])
+        @test s[(1,2), :] == Tensor{0}([1, 1])
     end
 
     @testset "Arithmetic" begin
