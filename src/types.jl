@@ -32,6 +32,8 @@ end
 # Helper convert function
 _convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
 _convert_array(::Type{T}, t::Tensor{L, S, N, M}) where {T, L, S, N, M} = Tensor{L, T, N, M}(_convert_array(T, t.data))
+_convert_array(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(_convert_array(T, a.value), _convert_array(T, a.jacobian))
+_convert_array(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(_convert_array(T, a.value), _convert_array(T, a.jacobian))
 
 Base.convert(::Type{Tensor{L, T, N, M}}, tensor::Tensor{L, S, N, M}) where {L, T, N, M, S} =
     Tensor{L, T, N, M}(_convert_array(T, tensor.data))
@@ -180,3 +182,6 @@ DualArray = Union{DualVector, DualMatrix}
 # Basic equality for Dual numbers
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials
 isapprox(a::Dual, b::Dual) = isapprox(a.value, b.value) && isapprox(a.partials, b.partials)
+
+# Type promotion on Dual
+Base.promote_rule(::Type{Dual{T1}}, ::Type{Dual{T2}}) where {T1, T2} = Dual{promote_type(T1, T2)}

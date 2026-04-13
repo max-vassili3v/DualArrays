@@ -46,5 +46,5 @@ function getindex(x::DualMatrix, y::Vararg{Int})
 end
 
 # Array interface for DualArray
-size(x::DualArray) = (length(x.value),)
+size(x::DualArray) = size(x.value)
 axes(x::DualArray) = axes(x.value)
