@@ -6,20 +6,28 @@ sparse_getindex(a...) = layout_getindex(a...)
 sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, size(D, 2))
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
 
-"""
-For the purposes of DualArrays.jl, we need to be able to index on the input indices
-(corresponding to the the primal values) only. This way, when we index, we still get the
-same 'arrangement' of dual parts. Example in the DualVector case (where the Jacobian is
-a Tensor{2, Float64, 1, 1} acting on a vector ϵ):
 
-d = a + Jϵ
-d[1] = a[1] + J[1,:]ϵ
+# We need a system of indexing that takes two tuples
+# of length N and M. We must then return a Tensor whose new input and output dimensions
+# are inferred from how many of the arguments in each respective tuple are integers.
 
-J[1, :] is a row vector so it can still be applied to our ϵ.
+# For the purposes of DualArrays.jl, we only need to index the input dimensions
+Idx = Union{Int, Colon, AbstractUnitRange}
+count_ints(t::Tuple) = count(x -> x isa Int, t)
 
-Note that a slice of a tensor done in this way will reduce the input dimension to 0.
-"""
-getindex(t::Tensor{<:Any, <:Any, N, M}, i::NTuple{N, Int}, ::Colon) where {N, M} = Tensor{0}(sparse_getindex(t.data, i..., ntuple(_ -> Colon(), M)...))
+function getindex(t::Tensor{<:Any, T, N, M}, i::NTuple{N, Idx}, j::NTuple{M, Idx}) where {T, N, M}
+    # new value of M is inferred from the Tensor constructor and the order of
+    # indexing the underlying array.
+    newN = N - count_ints(i)
+    Tensor{newN}(sparse_getindex(t.data, i..., j...))
+end
+
+function getindex(t::Tensor{<:Any, T, N, M}, i::NTuple{N, Idx}, ::Colon) where {T, N, M}
+    # new value of M is inferred from the Tensor constructor and the order of
+    # indexing the underlying array.
+    newN = N - count_ints(i)
+    Tensor{newN}(sparse_getindex(t.data, i..., ntuple(_ -> Colon(), M)...))
+end
 # Integer indexing always returns a scalar.
 getindex(t::Tensor, i::Vararg{Int}) = getindex(t.data, i...)
 # Indexing with only slices/ranges returns a similar tensor
@@ -29,7 +37,7 @@ getindex(t::Tensor{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) wher
 Extract a single Dual number from a DualVector at position y.
 """
 function getindex(x::DualVector, y::Int)
-    Dual(x.value[y], x.jacobian[(y,), :])
+    Dual(x.value[y], x.jacobian[(y,), (:,)])
 end
 
 """
