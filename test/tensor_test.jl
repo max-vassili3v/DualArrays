@@ -30,5 +30,13 @@ using DualArrays: Tensor
         @test t1 .* t2 .+ t3 == Tensor{1}([3 4 5;4 6 8;5 8 11])
 
         @test sin.(t1) == Tensor{0}(sin.([1, 2, 3]))
+
+        s = Tensor{1}(zeros(3, 3))
+
+        result = (s .= t .+ 1)
+
+        @test result isa Tensor
+        @test result.data == s.data
+        @test s == Tensor{1}([2 3 4; 5 6 7; 8 9 10])
     end
 end

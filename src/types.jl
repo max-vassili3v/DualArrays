@@ -75,7 +75,7 @@ function Base.copy(bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
 end
 
 # copyto adds support for .=
-function Base.copyto!(dest::Tensor, bc::Broadcast.Broadcasted{TensorBroadcastStyle})
+function Base.copyto!(dest::Tensor, bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
     # As above
     databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
     copyto!(dest.data, Broadcast.flatten(databroadcast))

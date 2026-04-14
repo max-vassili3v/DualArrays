@@ -10,6 +10,10 @@ using DualArrays: Tensor
     
     @testset "Indexing" begin
         v = DualVector([1, 2, 3], [1 2 3; 4 5 6;7 8 9])
+
+        @test size(v) == (3,)
+        @test axes(v) == (Base.OneTo(3),)
+
         @test v[1] isa Dual
         @test v[1] == Dual(1,[1,2,3])
         @test v[2] == Dual(2,[4,5,6])
@@ -87,6 +91,13 @@ using DualArrays: Tensor
         @test vcat(x) == DualVector([1], [1 2 3])
         @test vcat(x, x) == DualVector([1, 1], [1 2 3;1 2 3])
         @test vcat(x, y) == DualVector([1, 2, 3], [1 2 3;4 5 6;7 8 9])
+    end
+
+    @testset "show" begin
+        d = DualVector([1.0, 2.0], [1 0; 0 1])
+        s = repr(MIME"text/plain"(), d)
+        @test occursin(" + ", s)
+        @test endswith(s, "𝛜")
     end
     
     include("broadcast_test.jl")
