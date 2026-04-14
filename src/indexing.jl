@@ -37,7 +37,7 @@ getindex(t::Tensor{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) wher
 Extract a single Dual number from a DualVector at position y.
 """
 function getindex(x::DualVector, y::Int)
-    Dual(x.value[y], x.jacobian[(y,), (:,)])
+    Dual(x.value[y], x.jacobian[(y,), :])
 end
 
 """
