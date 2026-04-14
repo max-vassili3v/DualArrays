@@ -74,4 +74,5 @@ using DualArrays, Test, SparseArrays, LinearAlgebra
 
     a = [1,2,3]
     @test a .* x == DualVector([2,4,6], [1 2 3;2 4 6;3 6 9])
+    @test x .* a == DualVector([2,4,6], [1 2 3;2 4 6;3 6 9])
 end

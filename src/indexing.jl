@@ -95,9 +95,3 @@ function Base.copyto!(dest::DualVector, src::DualVector)
     copyto!(dest.jacobian.data, src.jacobian.data)
     return dest
 end
-
-function Base.copyto!(dest::DualMatrix, src::DualMatrix)
-    copyto!(dest.value, src.value)
-    copyto!(dest.jacobian.data, src.jacobian.data)
-    return dest
-end
