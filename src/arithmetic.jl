@@ -20,10 +20,6 @@ end
 Matrix multiplication with a DualVector.
 """
 *(x::AbstractMatrix, y::DualVector) = DualVector(x * y.value, x * y.jacobian)
-*(x::Number, t::Tensor) = x .* t
-*(t::Tensor, x::Number) = t .* x
-*(x::Dual, t::Tensor{<:Any, <:Any, N, <:Any}) where {N} = Tensor{N}(x .* t.data)
-*(t::Tensor{<:Any, <:Any, N, <:Any}, x::Dual) where {N} = Tensor{N}(t.data .* x)
 
 """
 this section attempts to define broadcasting rules on DualVectors for functions

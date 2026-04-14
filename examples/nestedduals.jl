@@ -30,9 +30,10 @@
 # (one dimension for each of a, ϵ and ϵ'. This is expanded by applying D to ϵ
 # to first obtain a matrix via tensor contraction, and then applying this to ϵ')
 #
-# Analogously, if we fix B = I, C = I, D = 0, we have that the resulting 3-tensor corresponding
-# to ϵϵ' is the Hessians of f at each element of a concatenated. If we consider a 
-# vector to scalar function, this will be a matrix that is just the Hessian.
+# Analogously, if we fix B = I, C = I, D = 0 and apply a function f: ℝⁿ → ℝᵐ
+# the coefficient of ϵϵ' will be an n x n x m tensor T such that T[:, :, i]
+# is the Hessian of the i-th result of f. More simply, if we consider a 
+# function f: ℝⁿ → ℝ, the coefficient of ϵϵ' will be the Hessian of f.
 #
 # We now implement an example using f(x) = x[1] * x[2] below.
 
