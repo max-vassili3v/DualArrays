@@ -12,6 +12,18 @@ sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, siz
 # are inferred from how many of the arguments in each respective tuple are integers.
 
 # For the purposes of DualArrays.jl, we only need to index the input dimensions
+#
+# Example:
+#
+# Consider a DualVector with standard matrix Jacobian (Tensor{2, T, 1, 1}):
+#
+# d = a + Bϵ
+#
+# If we index d[1], we have:
+#
+# d[1] = a[1] + B[1, :]ϵ
+#
+# Where B[1, :] indexes the input dimension of B
 Idx = Union{Int, Colon, AbstractUnitRange}
 count_ints(t::Tuple) = count(x -> x isa Int, t)
 
