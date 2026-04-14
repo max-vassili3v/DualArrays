@@ -2,7 +2,7 @@
 
 """
 This type represents a Tensor along with its contraction rule.
-A tensor with its contraction rule represents a linear map from an N-array to an M-array,
+A tensor with its contraction rule represents a linear map from an M-array to an N-array,
 with 0-arrays considered scalars, 1-arrays vectors, etc.
 
 We have:
@@ -17,8 +17,8 @@ In the context of DualArrays.jl, a DualArray (currently only a vector) can be th
 
 a + Jϵ 
 
-Where a is an M-array of real numbers, J is an N+M=tensor and ϵ is an N-array of dual parts.
-In the simplest case, where M = 0, we have a Dual number with dual parts arranged in an N-array.
+Where a is an N-array of real numbers, J is an N+M=tensor and ϵ is an M-array of dual parts.
+In the simplest case, where N = 0, we have a Dual number with dual parts arranged in an M-array.
 """
 struct Tensor{L, T, N, M} <: AbstractArray{T, L}
     data::AbstractArray{T, L}
@@ -78,7 +78,7 @@ function Base.copy(bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
 end
 
 # copyto adds support for .=
-function Base.copyto!(dest::Tensor, bc::Broadcast.Broadcasted{TensorBroadcastStyle})
+function Base.copyto!(dest::Tensor, bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
     # As above
     databroadcast = Base.broadcasted(bc.f, _unwrap_args(bc.args)...)
     if databroadcast isa Broadcast.Broadcasted
