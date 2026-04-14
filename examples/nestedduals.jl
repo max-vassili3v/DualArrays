@@ -35,6 +35,11 @@
 # is the Hessian of the i-th result of f. More simply, if we consider a 
 # function f: ℝⁿ → ℝ, the coefficient of ϵϵ' will be the Hessian of f.
 #
+# In DualArrays.jl, this can be achieved by setting up a DualVector with a DualVector
+# value and DualMatrix jacobian. Applying f: ℝⁿ → ℝ will give us a Dual with a Dual
+# value and a DualVector vector partials. The jacobian of the DualVector partials
+# is our Hessian.
+#
 # We now implement an example using f(x) = x[1] * x[2] below.
 
 f(x) = x[1] * x[2]

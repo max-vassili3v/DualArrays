@@ -2,10 +2,12 @@
 
 using ArrayLayouts, FillArrays, LinearAlgebra, SparseArrays
 
+
 sparse_getindex(a...) = layout_getindex(a...)
+
+# TODO: should we move these?
 sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, size(D, 2))
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
-sparse_getindex(x::DualArray, I...) = getindex(x, I...)
 
 # We need a system of indexing that takes two tuples
 # of length N and M. We must then return a Tensor whose new input and output dimensions
@@ -86,3 +88,16 @@ end
 # Array interface for DualArray
 size(x::DualArray) = size(x.value)
 axes(x::DualArray) = axes(x.value)
+
+# Copyto! (For broadcast assignments)
+function Base.copyto!(dest::DualVector, src::DualVector)
+    copyto!(dest.value, src.value)
+    copyto!(dest.jacobian.data, src.jacobian.data)
+    return dest
+end
+
+function Base.copyto!(dest::DualMatrix, src::DualMatrix)
+    copyto!(dest.value, src.value)
+    copyto!(dest.jacobian.data, src.jacobian.data)
+    return dest
+end

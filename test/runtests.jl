@@ -1,4 +1,4 @@
-using DualArrays, Test, LinearAlgebra, ForwardDiff, BandedMatrices
+using DualArrays, Test, LinearAlgebra, ForwardDiff, BandedMatrices, FillArrays
 using DualArrays: Tensor
 
 @testset "DualArrays" begin
@@ -6,10 +6,12 @@ using DualArrays: Tensor
     @testset "Type Definition" begin
         @test_throws ArgumentError DualVector([1,2],I(3))
         @test Dual(1.0, [1, 2, 3]).partials == Tensor{0}([1.0, 2.0, 3.0])
+
+        @test_throws ArgumentError DualMatrix([1 2; 3 4], ones(3,3,3))
     end
     
     @testset "Indexing (Vector)" begin
-        v = DualVector([1, 2, 3], [1 2 3; 4 5 6;7 8 9])
+        v = DualVector([1., 2, 3], [1 2 3; 4 5 6;7 8 9])
 
         @test size(v) == (3,)
         @test axes(v) == (Base.OneTo(3),)
@@ -20,6 +22,9 @@ using DualArrays: Tensor
         @test v[3] == Dual(3,[7,8,9])
         @test_throws BoundsError v[4]
         @test v == DualVector([1,2, 3], [1 2 3; 4 5 6;7 8 9])
+
+        v2 = DualVector([1., 2, 3], Diagonal(ones(3)))
+        @test v2[1] == Dual(1, OneElement(1.0, 1, 3))
 
         x,y = v[1:2],v[2:3]
         @test x == DualVector([1,2],[1 2 3;4 5 6])
@@ -39,7 +44,8 @@ using DualArrays: Tensor
         @test m[1,1] == Dual(1, [1, 1, 1])
 
         @test m[1, :] isa DualVector
-        @test m[1, :] == DualVector([1, 2, 3], [1 1 1; 1 1 1; 1 1 1])
+        @test m[1, :] == DualVector([1, 2, 3], ones(3, 3))
+        @test m[:, 1] == DualVector([1, 4, 7], ones(3, 3))
 
         @test m[1:2, 1:2] == DualMatrix([1 2; 4 5], ones(2,2,3))
     end
@@ -110,6 +116,14 @@ using DualArrays: Tensor
         s = repr(MIME"text/plain"(), d)
         @test occursin(" + ", s)
         @test endswith(s, "𝛜")
+    end
+
+    @testset "Nested Duals" begin
+        d = DualVector([2, 3], [1 0;0 1])
+        d1 = DualMatrix([1.0 0; 0 1], zeros(2, 2, 2))
+        d2 = DualVector(d, d1)
+
+        @test d2 isa DualVector
     end
     
     include("broadcast_test.jl")

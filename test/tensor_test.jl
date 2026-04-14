@@ -1,4 +1,4 @@
-using Test, LinearAlgebra
+using Test, LinearAlgebra, FillArrays
 using DualArrays: Tensor
 
 @testset "Tensor" begin
@@ -38,5 +38,31 @@ using DualArrays: Tensor
         @test result isa Tensor
         @test result.data == s.data
         @test s == Tensor{1}([2 3 4; 5 6 7; 8 9 10])
+
+        # Use FillArrays to test copyto! with a non-standard broadcast.
+        a = Tensor{1}(Zeros(3))
+        b = Tensor{1}(zeros(3))
+
+        bc = Base.Broadcast.broadcasted(+, a, 1)
+
+        expected = collect(a.data .+ 1)
+        copyto!(b, bc)
+        @test b.data == expected
+    end
+    @testset "Tensor + DualVector" begin
+        d = DualVector([1, 2], [1 0; 0 1])
+        t = Tensor{1}([1, 1])
+        
+        r = d .+ t
+        @test r isa DualVector
+        @test r == [Dual(2, [1, 0]), Dual(3, [0, 1])]
+
+        r2 = t .+ d
+        @test r2 isa DualVector
+        @test r2 == r
+
+        s = DualVector(zeros(2), zeros(2, 2))
+        s .= d .+ t
+        @test s == r
     end
 end

@@ -48,7 +48,9 @@ end
 # Below we define a broadcast style for Tensors and override copy and copyto!
 # This allows all arithmetic/broadcasting with Tensors to be handled by the
 # underlying logic of the array contained in the struct, while ensuring that
-# all results stay as a Tensor.
+# all results stay as a Tensor. This is with the exception of DualArrays,
+# Where we expect the overloaded broadcasted to materialize DualArrays
+# Using the Tensors obtained from below.
 
 struct TensorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{1} end
 TensorBroadcastStyle{N}(::Val{M}) where {N, M} = TensorBroadcastStyle{N}()

@@ -65,6 +65,16 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
             jac = $p2.(x, y.value) .* y.jacobian
             return DualVector(val, jac)
         end
+        @eval function broadcasted(::typeof($f), x::DualVector, y::AbstractVector)
+            val = $f.(x.value, y)
+            jac = $p1.(x.value, y) .* x.jacobian
+            return DualVector(val, jac)
+        end
+        @eval function broadcasted(::typeof($f), x::AbstractVector, y::DualVector)
+            val = $f.(x, y.value)
+            jac = $p2.(x, y.value) .* y.jacobian
+            return DualVector(val, jac)
+        end
         @eval function broadcasted(::typeof($f), x::DualVector, y::Dual)
             val = $f.(x.value, y.value)
             # Product rule
