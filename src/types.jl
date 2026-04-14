@@ -30,10 +30,9 @@ function Tensor{N}(data::AbstractArray{T, L}) where {L, T, N}
 end
 
 # Helper convert function
+_convert_array(::Type{T}, a::AbstractArray{T}) where {T} = a
 _convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
 _convert_array(::Type{T}, t::Tensor{L, S, N, M}) where {T, L, S, N, M} = Tensor{L, T, N, M}(_convert_array(T, t.data))
-_convert_array(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(_convert_array(T, a.value), _convert_array(T, a.jacobian))
-_convert_array(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(_convert_array(T, a.value), _convert_array(T, a.jacobian))
 
 Base.convert(::Type{Tensor{L, T, N, M}}, tensor::Tensor{L, S, N, M}) where {L, T, N, M, S} =
     Tensor{L, T, N, M}(_convert_array(T, tensor.data))
@@ -71,16 +70,22 @@ _unwrap_args(args::Tuple) = map(_unwrap, args)
 # copy ensures that arithmetic involving a Tensor returns a Tensor
 function Base.copy(bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
     # We create a Broadcasted of the underlying arrays and create a Tensor containing
-    # the evaluated broadcast
-    databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
-    Tensor{N}(copy(Broadcast.flatten(databroadcast)))
+    # the evaluated broadcast. We check if Base.broadcasted is a Broadcasted
+    # or is overriden such as with DualArrays
+    databroadcast = Base.broadcasted(bc.f, _unwrap_args(bc.args)...)
+    result = databroadcast isa Broadcast.Broadcasted ? copy(Broadcast.flatten(databroadcast)) : databroadcast
+    Tensor{N}(result)
 end
 
 # copyto adds support for .=
 function Base.copyto!(dest::Tensor, bc::Broadcast.Broadcasted{TensorBroadcastStyle})
     # As above
-    databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
-    copyto!(dest.data, Broadcast.flatten(databroadcast))
+    databroadcast = Base.broadcasted(bc.f, _unwrap_args(bc.args)...)
+    if databroadcast isa Broadcast.Broadcasted
+        copyto!(dest.data, Broadcast.flatten(databroadcast))
+    else
+        copyto!(dest.data, databroadcast)
+    end
     dest
 end
 
@@ -178,6 +183,9 @@ end
 
 # For convenience
 DualArray = Union{DualVector, DualMatrix}
+
+_convert_array(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(_convert_array(T, a.value), _convert_array(T, a.jacobian))
+_convert_array(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(_convert_array(T, a.value), _convert_array(T, a.jacobian))
 
 # Basic equality for Dual numbers
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials

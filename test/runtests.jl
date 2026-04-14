@@ -8,7 +8,7 @@ using DualArrays: Tensor
         @test Dual(1.0, [1, 2, 3]).partials == Tensor{0}([1.0, 2.0, 3.0])
     end
     
-    @testset "Indexing" begin
+    @testset "Indexing (Vector)" begin
         v = DualVector([1, 2, 3], [1 2 3; 4 5 6;7 8 9])
         @test v[1] isa Dual
         @test v[1] == Dual(1,[1,2,3])
@@ -28,6 +28,18 @@ using DualArrays: Tensor
         @test sum(v[1:end-1] .* v[2:end]).partials == ForwardDiff.gradient(v -> sum(v[1:end-1] .* v[2:end]), 1:n)
     end
     
+    @testset "Indexing (Matrix)" begin
+        m = DualMatrix([1 2 3;4 5 6;7 8 9], ones(3,3,3))
+
+        @test m[1,1] isa Dual
+        @test m[1,1] == Dual(1, [1, 1, 1])
+
+        @test m[1, :] isa DualVector
+        @test m[1, :] == DualVector([1, 2, 3], [1 1 1; 1 1 1; 1 1 1])
+
+        @test m[1:2, 1:2] == DualMatrix([1 2; 4 5], ones(2,2,3))
+    end
+
     @testset "Arithmetic (DualVector)" begin
         v = DualVector([1, 2, 3], [1 2 3; 4 5 6;7 8 9])
         w = v + v

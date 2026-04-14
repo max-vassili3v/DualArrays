@@ -5,7 +5,7 @@ using ArrayLayouts, FillArrays, LinearAlgebra, SparseArrays
 sparse_getindex(a...) = layout_getindex(a...)
 sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, size(D, 2))
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
-
+sparse_getindex(x::DualArray, I...) = getindex(x, I...)
 
 # We need a system of indexing that takes two tuples
 # of length N and M. We must then return a Tensor whose new input and output dimensions
@@ -33,11 +33,11 @@ getindex(t::Tensor, i::Vararg{Int}) = getindex(t.data, i...)
 # Indexing with only slices/ranges returns a similar tensor
 getindex(t::Tensor{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) where {N, M} = Tensor{N}(sparse_getindex(t.data, i...))
 
-"""
-Extract a single Dual number from a DualVector at position y.
-"""
+# Integer indexing for a DualVector.
+# If the jacobian is a Tensor, we use the Tensor indexing on input dimensions
+# Otherwise if it is a 
 function getindex(x::DualVector, y::Int)
-    Dual(x.value[y], x.jacobian[(y,), (:,)])
+    Dual(x.value[y], x.jacobian[(y,), :])
 end
 
 """
@@ -50,7 +50,25 @@ function getindex(x::DualVector, y::UnitRange)
 end
 
 function getindex(x::DualMatrix, y::Vararg{Int})
-    Dual(x.value[y...], x.jacobian[y..., :])
+    Dual(x.value[y...], x.jacobian[y, :])
+end
+
+function getindex(x::DualMatrix, y::Int, ::Colon)
+    newval = x.value[y, :]
+    newjac = x.jacobian[(y,:), :]
+    DualVector(newval, newjac)
+end
+
+function getindex(x::DualMatrix, ::Colon, y::Int)
+    newval = x.value[:, y]
+    newjac = x.jacobian[(:,y), :]
+    DualVector(newval, newjac)
+end
+
+function getindex(x::DualMatrix, y::Vararg{Union{Colon, UnitRange}})
+    newval = x.value[y...]
+    newjac = x.jacobian[y, :]
+    DualMatrix(newval, newjac)
 end
 
 # Array interface for DualArray

@@ -1,0 +1,72 @@
+###
+#
+# IDEA: Can we have a DualVector inside a DualVector in order to
+# achieve 'nested dual numbers' thereby achieving higher order derivatives?
+# 
+# BACKGROUND:
+#
+# Consider a number with two dual parts, ϵ and ϵ' such that ϵϵ' ≠ 0.
+# We can represent such a number as follows:
+#
+# a + bϵ + cϵ' + dϵϵ'
+#
+# Consider an arbitrary function f: ℝ → ℝ given by f(x) = x^n.
+# We can evaluate f at the above dual number as follows:
+#
+# f(a + bϵ + cϵ' + dϵϵ') =
+# a^n + n a^(n-1) b ϵ + n a^(n-1) c ϵ' + (n a^(n-1) d + n(n-1) a^(n-2) b c) ϵϵ'
+#
+# Fix a ∈ ℝ. We observe that if we fix b = 1, c = 1, d = 0, we have that the
+# coefficient of ϵϵ' is equivalent to f''(a). Thus using dual numbers like this
+# Gives us a way to compute second derivatives.
+#
+# We now generalise to the vector case. Consider vectors of dual parts ϵ and ϵ'
+# Such that ϵᵢϵ'ⱼ ≠ 0 for all i, j. A dual vector in these can be written as
+#
+# (a + Bϵ) + (C + Dϵ)ϵ'
+#
+# Where a is a value of reals, B is the matrix of coefficients of ϵ,
+# C is the coefficients of ϵ' and D is the 3-tensor of coefficients of ϵϵ',
+# (one dimension for each of a, ϵ and ϵ'. This is expanded by applying D to ϵ
+# to first obtain a matrix via tensor contraction, and then applying this to ϵ')
+#
+# Analogously, if we fix B = I, C = I, D = 0, we have that the resulting 3-tensor corresponding
+# to ϵϵ' is the Hessians of f at each element of a concatenated. If we consider a 
+# vector to scalar function, this will be a matrix that is just the Hessian.
+#
+# We now implement an example using f(x) = x[1] * x[2] below.
+
+f(x) = x[1] * x[2]
+
+using DualArrays
+# a + Bϵ
+x = DualVector([2, 3], [1 0; 0 1])
+
+# C + Dϵ
+y = DualMatrix([1 0;0 1], zeros(2,2,2))
+
+# Setup the nested dual vector (a + Bϵ) + (C + Dϵ)ϵ'
+z = DualVector(x, y)
+
+# This will return a Dual number:
+# a + b^Tϵ + (c + Dϵ)ϵ'
+result = f(z)
+
+# equivalent to a
+value = result.value.value
+# equivalent to b
+gradient = result.value.partials
+# equivalent to c
+gradient2 = result.partials.data.value
+# equivalent to d
+hessian = result.partials.data.jacobian
+
+# We expect this to be 6
+print("Value: ", value, "\n")
+# We expect this to be [3, 2]
+print("Gradient: ", gradient, "\n")
+# We expect this to be the same
+print("Gradient: ", gradient2, "\n")
+# We expect this to be [0 1; 1 0]
+print("Hessian: ", hessian, "\n")
+

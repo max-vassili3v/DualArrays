@@ -1,5 +1,11 @@
 # Arithmetic operations for DualArrays.jl
 
+# Tensor transpose
+Base.transpose(t::Tensor{<:Any, <:Any, <:N, <:Any}) where {N} = Tensor{N}(transpose(t.data))
+# Special case: Transpose of a vector becomes a matrix
+# TODO: Technically a row vector is a Tensor{1, T, 1, 0}
+Base.transpose(t::Tensor{1, <:Any, 0, <:Any}) = Tensor{1}(transpose(t.data))
+
 """
 Addition/Subtraction of DualVectors.
 """
@@ -14,6 +20,10 @@ end
 Matrix multiplication with a DualVector.
 """
 *(x::AbstractMatrix, y::DualVector) = DualVector(x * y.value, x * y.jacobian)
+*(x::Number, t::Tensor) = x .* t
+*(t::Tensor, x::Number) = t .* x
+*(x::Dual, t::Tensor{<:Any, <:Any, N, <:Any}) where {N} = Tensor{N}(x .* t.data)
+*(t::Tensor{<:Any, <:Any, N, <:Any}, x::Dual) where {N} = Tensor{N}(t.data .* x)
 
 """
 this section attempts to define broadcasting rules on DualVectors for functions
@@ -75,6 +85,16 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
             val = $f.(x.value, y.value)
             # Product rule
             jac = $p1.(x.value, y.value) .* x.jacobian .+ $p2.(x.value, y.value) .* y.jacobian
+            return DualVector(val, jac)
+        end
+        @eval function broadcasted(::typeof($f), x::Dual, y::AbstractVector)
+            val = $f.(x.value, y)
+            jac = $p1.(x.value, y) .* transpose(x.partials)
+            return DualVector(val, jac)
+        end
+        @eval function broadcasted(::typeof($f), x::AbstractVector, y::Dual)
+            val = $f.(x, y.value)
+            jac = $p2.(x, y.value) .* transpose(y.partials)
             return DualVector(val, jac)
         end
         # Must have Base.$f in order not to import everything

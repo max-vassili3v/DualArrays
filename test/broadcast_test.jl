@@ -71,4 +71,7 @@ using DualArrays, Test, SparseArrays, LinearAlgebra
     @test s.jacobian ≈ [0.0 -2.0 -3.0; -1.0 -1.0 -3.0; -1.0 -2.0 -2.0]
     @test m.jacobian ≈ [3.0 2.0 3.0; 2.0 6.0 6.0; 3.0 6.0 11.0]
     @test div.jacobian ≈ [0.25 -0.5 -0.75; -0.5 -0.5 -1.5; -0.75 -1.5 -1.75]
+
+    a = [1,2,3]
+    @test a .* x == DualVector([2,4,6], [1 2 3;2 4 6;3 6 9])
 end
