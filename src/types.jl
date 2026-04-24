@@ -126,31 +126,36 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualVector{T, V <: AbstractVector{T},J <: (ArrayOperator{L, T, 1, M} where {L, M})} <: AbstractVector{Dual{T}}
-    value::V
+struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{L, T, N, M} where {L, M})} <: AbstractVector{Dual{T}}
+    value::A
     jacobian::J
 
-    function DualVector(value::V, jacobian::J) where {T, V <: AbstractVector{T}, J <: (Tensor{L, T, 1, M} where {L, M})}
-        if length(value) != size(jacobian, 1)
+    function DualArray(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{L, T, N, M} where {L, M})}
+        if size(value) != ntuple(i -> size(jacobian, i), N)
             throw(ArgumentError("Length of value vector must match number of rows in Jacobian."))
         end
-        new{T, V, J}(value, jacobian)
+        new{T,N, A, J}(value, jacobian)
     end
 end
 
 """
 Constructor that forces type compatibility
 """
-function DualVector(value::AbstractVector, jacobian::ArrayOperator)
+function DualArray(value::AbstractArray, jacobian::ArrayOperator)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualVector(_convert_array(T, value), _convert_array(T, jacobian))
+    DualArray(_convert_array(T, value), _convert_array(T, jacobian))
 end
 
-# Helper function to define DualVectors with AbstractArray jacobians
-function DualVector(value::AbstractVector, jacobian::AbstractArray{T, N}) where {T, N}
-    DualVector(value, ArrayOperator{1}(jacobian))
+# Helper function to define DualArrays with AbstractArray jacobians
+function DualArray(value::AbstractArray{S, M}, jacobian::AbstractArray{T, N}) where {S, T, N, M}
+    DualArray(value, ArrayOperator{M}(jacobian))
 end
 
+const DualVector = DualArray{T, 1} where {T}
+const DualMatrix = DualArray{T, 2} where {T}
+
+DualVector(value::AbstractVector, jacobian) = DualArray(value, jacobian)
+DualMatrix(value::AbstractMatrix, jacobian) = DualArray(value, jacobian)
 # Basic equality for Dual numbers
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials
 isapprox(a::Dual, b::Dual) = isapprox(a.value, b.value) && isapprox(a.partials, b.partials)

@@ -31,19 +31,19 @@ function getindex(t::ArrayOperator{<:Any, T, N, M}, i::NTuple{N, Idx}, j::NTuple
     # new value of M is inferred from the ArrayOperator constructor and the order of
     # indexing the underlying array.
     newN = N - count_ints(i)
-    ArrayOperator{newN, T, newN, M}(sparse_getindex(t.data, i..., j...))
+    ArrayOperator{newN}(sparse_getindex(t.data, i..., j...))
 end
 
 function getindex(t::ArrayOperator{<:Any, T, N, M}, i::NTuple{N, Idx}, ::Colon) where {T, N, M}
     # new value of M is inferred from the ArrayOperator constructor and the order of
     # indexing the underlying array.
     newN = N - count_ints(i)
-    ArrayOperator{newN, T, newN, M}(sparse_getindex(t.data, i..., ntuple(_ -> Colon(), M)...))
+    ArrayOperator{newN}(sparse_getindex(t.data, i..., ntuple(_ -> Colon(), M)...))
 end
 # Integer indexing always returns a scalar.
 getindex(t::ArrayOperator, i::Vararg{Int}) = getindex(t.data, i...)
 # Indexing with only slices/ranges returns a similar tensor
-getindex(t::ArrayOperator{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) where {N, M} = ArrayOperator{N, T, N, M}(sparse_getindex(t.data, i...))
+getindex(t::ArrayOperator{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) where {N, M} = ArrayOperator{N}(sparse_getindex(t.data, i...))
 
 """
 Extract a single Dual number from a DualVector at position y.
