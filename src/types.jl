@@ -93,19 +93,14 @@ A dual number type that stores a value and its partials (derivatives).
 - `value::T`: The primal value
 - `partials::Partials`: The partial derivatives as a tensor mapping to a scalar
 """
-struct Dual{T, Partials <: (ArrayOperator{L, T, 0, M} where {L, M})} <: Real
+struct Dual{T, Partials <: AbstractArray{T}} <: Real
     value::T
     partials::Partials
 end
 
-function Dual(value::T, partials::ArrayOperator{L, S, 0, M}) where {S, T, L, M}
+function Dual(value::T, partials::AbstractArray{S}) where {S, T}
     T2 = promote_type(T, S)
-    Dual{T2, ArrayOperator{L, T2, 0, M}}(convert(T2, value), convert(ArrayOperator{L, T2, 0, M}, partials))
-end
-
-# Helper function to define Duals from an AbstractArray
-function Dual(value, partials::AbstractArray{T, N}) where {T, N}
-    Dual(value, ArrayOperator{0}(partials))
+    Dual(convert(T2, value), _convert_array(T2, partials))
 end
 
 """
