@@ -5,7 +5,7 @@ using DualArrays: ArrayOperator
     
     @testset "Type Definition" begin
         @test_throws ArgumentError DualVector([1,2],I(3))
-        @test Dual(1.0, [1, 2, 3]).partials == ArrayOperator{0}([1.0, 2.0, 3.0])
+        @test Dual(1.0, [1, 2, 3]).partials == [1.0, 2.0, 3.0]
     end
     
     @testset "Indexing" begin

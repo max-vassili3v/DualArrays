@@ -22,7 +22,7 @@ a + Jϵ
 Where a is an N-array of real numbers, J is an N+M=tensor and ϵ is an M-array of dual parts.
 In the simplest case, where N = 0, we have a Dual number with dual parts arranged in an M-array.
 """
-struct ArrayOperator{L, T, N, M} <: AbstractArray{T, L}
+struct ArrayOperator{L, T, N, M}
     data::AbstractArray{T, L}
 end
 
@@ -39,12 +39,27 @@ Base.convert(::Type{ArrayOperator{L, T, N, M}}, tensor::ArrayOperator{L, S, N, M
     ArrayOperator{L, T, N, M}(_convert_array(T, tensor.data))
 
 # Basic array interface
-for op in (:size, :axes)
+for op in (:size, :axes, :iterate)
     @eval begin
         ($op)(t::ArrayOperator) = ($op)(t.data)
         ($op)(t::ArrayOperator, i...) = ($op)(t.data, i...)
     end
 end
+
+# Since ArrayOperator is not an AbstractArray we define these manually
+eltype(t::ArrayOperator) = eltype(t.data)
+
+Base.Broadcast.broadcastable(t::ArrayOperator) = t
+
+transpose(t::ArrayOperator) = transpose(t.data)
+sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
+
+==(a::ArrayOperator, b::ArrayOperator) = a.data == b.data
+==(a::ArrayOperator, b::AbstractArray) = a.data == b
+==(a::AbstractArray, b::ArrayOperator) = a == b.data
+isapprox(a::ArrayOperator, b::ArrayOperator; kwargs...) = isapprox(a.data, b.data; kwargs...)
+isapprox(a::ArrayOperator, b::AbstractArray; kwargs...) = isapprox(a.data, b; kwargs...)
+isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(a, b.data; kwargs...)
 
 # Below we define a broadcast style for ArrayOperators and override copy and copyto!
 # This allows all arithmetic/broadcasting with ArrayOperators to be handled by the
@@ -57,14 +72,15 @@ ArrayOperatorBroadcastStyle{N}(::Val{M}) where {N, M} = ArrayOperatorBroadcastSt
 # N is the input dimension of the tensor being broadcasted.
 # For he result of the broadcast we will choose to preserve the highest input dimension. 
 Base.BroadcastStyle(::Type{<:ArrayOperator{<:Any, <:Any, N, <:Any}}) where {N} = ArrayOperatorBroadcastStyle{N}()
-Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{0}) where {N} = ArrayOperatorBroadcastStyle{N}()
-Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{1}) where {N} = ArrayOperatorBroadcastStyle{N}()
+Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{M}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
+Base.BroadcastStyle(::Broadcast.DefaultArrayStyle{M}, ::ArrayOperatorBroadcastStyle{N}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
 Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::ArrayOperatorBroadcastStyle{M}) where {N, M} = ArrayOperatorBroadcastStyle{max(N, M)}()
 
 # Helper functions to help define broadcasting/arithmetic with ArrayOperators.
 # By converting a broadcast involving ArrayOperators into a broadcast
 # involving the underlying arrays.
 _unwrap(t::ArrayOperator) = t.data
+_unwrap(bc::Broadcast.Broadcasted) = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
 _unwrap(x) = x
 _unwrap_args(args::Tuple) = map(_unwrap, args)
 
@@ -85,13 +101,13 @@ function Base.copyto!(dest::ArrayOperator, bc::Broadcast.Broadcasted{ArrayOperat
 end
 
 """
-    Dual{T, Partials <: AbstractVector{T}} <: Real
+    Dual{T, Partials <: AbstractArray{T}} <: Real
 
 A dual number type that stores a value and its partials (derivatives).
 
 # Fields
 - `value::T`: The primal value
-- `partials::Partials`: The partial derivatives as a tensor mapping to a scalar
+- `partials::Partials`: The partial derivatives stored as an array
 """
 struct Dual{T, Partials <: AbstractArray{T}} <: Real
     value::T
@@ -101,6 +117,11 @@ end
 function Dual(value::T, partials::AbstractArray{S}) where {S, T}
     T2 = promote_type(T, S)
     Dual(convert(T2, value), _convert_array(T2, partials))
+end
+
+function Dual(value::T, partials::ArrayOperator{L, S, 0, M}) where {L, S, M, T}
+    T2 = promote_type(T, S)
+    Dual(convert(T2, value), _convert_array(T2, partials).data)
 end
 
 """

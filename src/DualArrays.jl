@@ -13,9 +13,9 @@ module DualArrays
 
 export DualVector, DualMatrix, Dual, jacobian
 
-import Base: +, -, ==, getindex, size, axes, broadcasted, show, sum, vcat, convert, *, isapprox, \
+import Base: +, -, ==, getindex, size, axes, broadcasted, show, sum, vcat, convert, *, isapprox, \, eltype, transpose, permutedims
 
-using LinearAlgebra, ArrayLayouts, FillArrays, DiffRules
+using LinearAlgebra, ArrayLayouts, FillArrays, DiffRules, TensorOperations
 
 include("types.jl")
 include("indexing.jl")
