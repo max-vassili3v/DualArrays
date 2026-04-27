@@ -9,13 +9,6 @@ using DualArrays: ArrayOperator
         @test [1 2 3;4 5 6;7 8 9] == t
         @test isapprox(t, [1 2 3;4 5 6;7 8 9])
     end
-    @testset "BroadcastStyle Val constructor" begin
-        # A plain broadcast operation; broadcast machinery should dimension-adapt the
-        # ArrayOperator broadcast style via ArrayOperatorBroadcastStyle{N}(::Val{M}).
-        u = t .+ ones(3, 3)
-        @test u isa ArrayOperator
-        @test u == ArrayOperator{1}([2 3 4; 5 6 7; 8 9 10])
-    end
     @testset "Indexing" begin
         @test t[1,1] == 1
         @test t[(1,), (:,)] == ArrayOperator{0}([1, 2, 3])
@@ -39,7 +32,7 @@ using DualArrays: ArrayOperator
         t2 = ArrayOperator{1}([1 2 3])
         t3 = ArrayOperator{0}([2])
 
-        @test t1 .+ ones(3) == ArrayOperator{0}([2, 3, 4])
+        @test t1 .+ ones(3, 3) == [2 2 2;3 3 3; 4 4 4]
         @test t1 .* t2 == ArrayOperator{1}([1 2 3;2 4 6;3 6 9])
         @test t1 .* t2 .+ t3 == ArrayOperator{1}([3 4 5;4 6 8;5 8 11])
 

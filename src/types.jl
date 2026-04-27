@@ -35,9 +35,6 @@ end
 _convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
 _convert_array(::Type{T}, t::ArrayOperator{L, S, N, M}) where {T, L, S, N, M} = ArrayOperator{L, T, N, M}(_convert_array(T, t.data))
 
-Base.convert(::Type{ArrayOperator{L, T, N, M}}, tensor::ArrayOperator{L, S, N, M}) where {L, T, N, M, S} =
-    ArrayOperator{L, T, N, M}(_convert_array(T, tensor.data))
-
 # Basic array interface
 for op in (:size, :axes, :iterate)
     @eval begin
@@ -59,7 +56,7 @@ sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
 ==(a::AbstractArray, b::ArrayOperator) = a == b.data
 isapprox(a::ArrayOperator, b::ArrayOperator; kwargs...) = isapprox(a.data, b.data; kwargs...)
 isapprox(a::ArrayOperator, b::AbstractArray; kwargs...) = isapprox(a.data, b; kwargs...)
-isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(a, b.data; kwargs...)
+isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(b, a)
 
 # Below we define a broadcast style for ArrayOperators and override copy and copyto!
 # This allows all arithmetic/broadcasting with ArrayOperators to be handled by the
