@@ -46,10 +46,10 @@ getindex(t::ArrayOperator, i::Vararg{Int}) = getindex(t.data, i...)
 getindex(t::ArrayOperator{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) where {N, M} = ArrayOperator{N}(sparse_getindex(t.data, i...))
 
 """
-Extract a single Dual number from a DualVector at position y.
+Extract a single Dual number from a DualArray.
 """
-function getindex(x::DualVector, y::Int)
-    Dual(x.value[y], x.jacobian[(y,), :])
+function getindex(x::DualArray, args::Vararg{Int})
+    Dual(x.value[args...], x.jacobian[args, :])
 end
 
 """
@@ -61,12 +61,7 @@ function getindex(x::DualVector, y::UnitRange)
     DualVector(newval, newjac)
 end
 
-"""
-Return the size of the DualVector (length of the value vector).
-"""
-size(x::DualVector) = (length(x.value),)
-
-"""
-Return the axes of the DualVector.
-"""
-axes(x::DualVector) = axes(x.value)
+# DualArray array interface
+for op in (:size, :axes)
+    @eval $op(a::DualArray) = $op(a.value)
+end

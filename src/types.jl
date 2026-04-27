@@ -66,7 +66,7 @@ isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(a, b.data; kw
 # underlying logic of the array contained in the struct, while ensuring that
 # all results stay as a ArrayOperator.
 
-struct ArrayOperatorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{1} end
+struct ArrayOperatorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{0} end
 ArrayOperatorBroadcastStyle{N}(::Val{M}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
 
 # N is the input dimension of the tensor being broadcasted.
@@ -108,6 +108,8 @@ A dual number type that stores a value and its partials (derivatives).
 # Fields
 - `value::T`: The primal value
 - `partials::Partials`: The partial derivatives stored as an array
+
+NOTE: Partials will soon be in the ArrayOperator format. 
 """
 struct Dual{T, Partials <: AbstractArray{T}} <: Real
     value::T

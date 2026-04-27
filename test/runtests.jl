@@ -9,10 +9,16 @@ using DualArrays: ArrayOperator
     end
     
     @testset "Indexing" begin
-        v = DualVector([1, 2, 3], [1 2 3; 4 5 6;7 8 9])
+        v = DualVector([1., 2, 3], [1 2 3; 4 5 6;7 8 9])
+        m = DualMatrix([1 2;3 4], zeros(2, 2, 2))
 
         @test size(v) == (3,)
         @test axes(v) == (Base.OneTo(3),)
+
+        @test size(m) == (2, 2)
+        @test axes(m) == (Base.OneTo(2), Base.OneTo(2))
+
+        @test m[1, 1] == Dual(1, [0, 0])
 
         @test v[1] isa Dual
         @test v[1] == Dual(1,[1,2,3])
