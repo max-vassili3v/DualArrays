@@ -8,6 +8,7 @@ using DualArrays: ArrayOperator
         @test t == [1 2 3;4 5 6;7 8 9]
         @test [1 2 3;4 5 6;7 8 9] == t
         @test isapprox(t, [1 2 3;4 5 6;7 8 9])
+        @test isapprox([1 2 3;4 5 6;7 8 9], t)
     end
     @testset "Indexing" begin
         @test t[1,1] == 1

@@ -64,7 +64,6 @@ isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(b, a)
 # all results stay as a ArrayOperator.
 
 struct ArrayOperatorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{0} end
-ArrayOperatorBroadcastStyle{N}(::Val{M}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
 
 # N is the input dimension of the tensor being broadcasted.
 # For he result of the broadcast we will choose to preserve the highest input dimension. 

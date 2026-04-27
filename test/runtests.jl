@@ -97,6 +97,10 @@ using DualArrays: ArrayOperator
         @test vcat(x) == DualVector([1], [1 2 3])
         @test vcat(x, x) == DualVector([1, 1], [1 2 3;1 2 3])
         @test vcat(x, y) == DualVector([1, 2, 3], [1 2 3;4 5 6;7 8 9])
+
+        z = DualVector([2, 3], [1 0; 0 1])
+        @test vcat(1, z).jacobian.data == [0 0; 1 0; 0 1]
+        @test vcat(z, 1).jacobian.data == [1 0; 0 1; 0 0]
     end
 
     @testset "show" begin
