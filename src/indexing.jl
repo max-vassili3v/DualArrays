@@ -10,14 +10,14 @@ sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, siz
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
 
 # We need a system of indexing that takes two tuples
-# of length N and M. We must then return a Tensor whose new input and output dimensions
+# of length N and M. We must then return a ArrayOperator whose new input and output dimensions
 # are inferred from how many of the arguments in each respective tuple are integers.
 
 # For the purposes of DualArrays.jl, we only need to index the input dimensions
 #
 # Example:
 #
-# Consider a DualVector with standard matrix Jacobian (Tensor{2, T, 1, 1}):
+# Consider a DualVector with standard matrix Jacobian (ArrayOperator{2, T, 1, 1}):
 #
 # d = a + Bϵ
 #
@@ -29,29 +29,29 @@ sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, siz
 Idx = Union{Int, Colon, AbstractUnitRange}
 count_ints(t::Tuple) = count(x -> x isa Int, t)
 
-function getindex(t::Tensor{<:Any, T, N, M}, i::NTuple{N, Idx}, j::NTuple{M, Idx}) where {T, N, M}
-    # new value of M is inferred from the Tensor constructor and the order of
+function getindex(t::ArrayOperator{<:Any, T, N, M}, i::NTuple{N, Idx}, j::NTuple{M, Idx}) where {T, N, M}
+    # new value of M is inferred from the ArrayOperator constructor and the order of
     # indexing the underlying array.
     newN = N - count_ints(i)
-    Tensor{newN}(sparse_getindex(t.data, i..., j...))
+    ArrayOperator{newN}(sparse_getindex(t.data, i..., j...))
 end
 
-function getindex(t::Tensor{<:Any, T, N, M}, i::NTuple{N, Idx}, ::Colon) where {T, N, M}
-    # new value of M is inferred from the Tensor constructor and the order of
+function getindex(t::ArrayOperator{<:Any, T, N, M}, i::NTuple{N, Idx}, ::Colon) where {T, N, M}
+    # new value of M is inferred from the ArrayOperator constructor and the order of
     # indexing the underlying array.
     newN = N - count_ints(i)
-    Tensor{newN}(sparse_getindex(t.data, i..., ntuple(_ -> Colon(), M)...))
+    ArrayOperator{newN}(sparse_getindex(t.data, i..., ntuple(_ -> Colon(), M)...))
 end
 # Integer indexing always returns a scalar.
-getindex(t::Tensor, i::Vararg{Int}) = getindex(t.data, i...)
+getindex(t::ArrayOperator, i::Vararg{Int}) = getindex(t.data, i...)
 # Indexing with only slices/ranges returns a similar tensor
-getindex(t::Tensor{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) where {N, M} = Tensor{N}(sparse_getindex(t.data, i...))
+getindex(t::ArrayOperator{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) where {N, M} = ArrayOperator{N}(sparse_getindex(t.data, i...))
 
-# Integer indexing for a DualVector.
-# If the jacobian is a Tensor, we use the Tensor indexing on input dimensions
-# Otherwise if it is a 
-function getindex(x::DualVector, y::Int)
-    Dual(x.value[y], x.jacobian[(y,), :])
+"""
+Extract a single Dual number from a DualArray.
+"""
+function getindex(x::DualArray, args::Vararg{Int})
+    Dual(x.value[args...], x.jacobian[args, :])
 end
 
 """
@@ -61,10 +61,6 @@ function getindex(x::DualVector, y::UnitRange)
     newval = x.value[y]
     newjac = x.jacobian[y, :]
     DualVector(newval, newjac)
-end
-
-function getindex(x::DualMatrix, y::Vararg{Int})
-    Dual(x.value[y...], x.jacobian[y, :])
 end
 
 function getindex(x::DualMatrix, y::Int, ::Colon)
@@ -85,13 +81,13 @@ function getindex(x::DualMatrix, y::Vararg{Union{Colon, UnitRange}})
     DualMatrix(newval, newjac)
 end
 
-# Array interface for DualArray
-size(x::DualArray) = size(x.value)
-axes(x::DualArray) = axes(x.value)
-
 # Copyto! (For broadcast assignments)
 function Base.copyto!(dest::DualVector, src::DualVector)
     copyto!(dest.value, src.value)
     copyto!(dest.jacobian.data, src.jacobian.data)
     return dest
+end
+# DualArray array interface
+for op in (:size, :axes)
+    @eval $op(a::DualArray) = $op(a.value)
 end

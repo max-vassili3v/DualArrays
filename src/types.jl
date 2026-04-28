@@ -1,9 +1,11 @@
 # Core type definitions for DualArrays.jl
 
 """
-This type represents a Tensor along with its contraction rule.
-A tensor with its contraction rule represents a linear map from an M-array to an N-array,
-with 0-arrays considered scalars, 1-arrays vectors, etc.
+This type represents a linear map from an M-array to an N-array, with a N+M=L-dimensional
+array as its underlying data. This can be thought of analogously to an L-tensor equipped
+with a contraction pattern characterised by (N, M). Specifically, the tensor has dimensions
+a₁ x a₂ x ... x a_N x b₁ x b₂ x ... x b_M and maps an M-array of shape (b₁, b₂, ..., b_M)
+to an N-array of shape (a₁, a₂, ..., a_N) by contracting over the last M indices.
 
 We have:
 -L is the dimensionality of the tensor
@@ -13,59 +15,69 @@ We have:
 
 We enforce L = N + M by inferring M in the constructor.
 
-In the context of DualArrays.jl, a DualArray (currently only a vector) can be thought of as
+In the context of DualArrays.jl, a DualArray can be thought of as
 
 a + Jϵ 
 
 Where a is an N-array of real numbers, J is an N+M=tensor and ϵ is an M-array of dual parts.
 In the simplest case, where N = 0, we have a Dual number with dual parts arranged in an M-array.
 """
-struct Tensor{L, T, N, M} <: AbstractArray{T, L}
+struct ArrayOperator{L, T, N, M}
     data::AbstractArray{T, L}
 end
 
 # Constructor to wrap an array with a tensor, given a contraction rule represented by N
-function Tensor{N}(data::AbstractArray{T, L}) where {L, T, N}
-    Tensor{L, T, N, L - N}(data)
+function ArrayOperator{N}(data::AbstractArray{T, L}) where {L, T, N}
+    ArrayOperator{L, T, N, L - N}(data)
 end
 
 # Helper convert function
 _convert_array(::Type{T}, a::AbstractArray{T}) where {T} = a
 _convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
-_convert_array(::Type{T}, t::Tensor{L, S, N, M}) where {T, L, S, N, M} = Tensor{L, T, N, M}(_convert_array(T, t.data))
-
-Base.convert(::Type{Tensor{L, T, N, M}}, tensor::Tensor{L, S, N, M}) where {L, T, N, M, S} =
-    Tensor{L, T, N, M}(_convert_array(T, tensor.data))
+_convert_array(::Type{T}, t::ArrayOperator{L, S, N, M}) where {T, L, S, N, M} = ArrayOperator{L, T, N, M}(_convert_array(T, t.data))
 
 # Basic array interface
-for op in (:size, :axes)
+for op in (:size, :axes, :iterate)
     @eval begin
-        ($op)(t::Tensor) = ($op)(t.data)
-        ($op)(t::Tensor, i...) = ($op)(t.data, i...)
+        ($op)(t::ArrayOperator) = ($op)(t.data)
+        ($op)(t::ArrayOperator, i...) = ($op)(t.data, i...)
     end
 end
 
-# Below we define a broadcast style for Tensors and override copy and copyto!
-# This allows all arithmetic/broadcasting with Tensors to be handled by the
-# underlying logic of the array contained in the struct, while ensuring that
-# all results stay as a Tensor. This is with the exception of DualArrays,
-# Where we expect the overloaded broadcasted to materialize DualArrays
-# Using the Tensors obtained from below.
+# Since ArrayOperator is not an AbstractArray we define these manually
+eltype(t::ArrayOperator) = eltype(t.data)
 
-struct TensorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{1} end
-TensorBroadcastStyle{N}(::Val{M}) where {N, M} = TensorBroadcastStyle{N}()
+Base.Broadcast.broadcastable(t::ArrayOperator) = t
+
+transpose(t::ArrayOperator) = transpose(t.data)
+sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
+
+==(a::ArrayOperator, b::ArrayOperator) = a.data == b.data
+==(a::ArrayOperator, b::AbstractArray) = a.data == b
+==(a::AbstractArray, b::ArrayOperator) = a == b.data
+isapprox(a::ArrayOperator, b::ArrayOperator; kwargs...) = isapprox(a.data, b.data; kwargs...)
+isapprox(a::ArrayOperator, b::AbstractArray; kwargs...) = isapprox(a.data, b; kwargs...)
+isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(b, a)
+
+# Below we define a broadcast style for ArrayOperators and override copy and copyto!
+# This allows all arithmetic/broadcasting with ArrayOperators to be handled by the
+# underlying logic of the array contained in the struct, while ensuring that
+# all results stay as a ArrayOperator.
+
+struct ArrayOperatorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{0} end
 
 # N is the input dimension of the tensor being broadcasted.
 # For he result of the broadcast we will choose to preserve the highest input dimension. 
-Base.BroadcastStyle(::Type{<:Tensor{<:Any, <:Any, N, <:Any}}) where {N} = TensorBroadcastStyle{N}()
-Base.BroadcastStyle(::TensorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{0}) where {N} = TensorBroadcastStyle{N}()
-Base.BroadcastStyle(::TensorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{1}) where {N} = TensorBroadcastStyle{N}()
-Base.BroadcastStyle(::TensorBroadcastStyle{N}, ::TensorBroadcastStyle{M}) where {N, M} = TensorBroadcastStyle{max(N, M)}()
+Base.BroadcastStyle(::Type{<:ArrayOperator{<:Any, <:Any, N, <:Any}}) where {N} = ArrayOperatorBroadcastStyle{N}()
+Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{M}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
+Base.BroadcastStyle(::Broadcast.DefaultArrayStyle{M}, ::ArrayOperatorBroadcastStyle{N}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
+Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::ArrayOperatorBroadcastStyle{M}) where {N, M} = ArrayOperatorBroadcastStyle{max(N, M)}()
 
-# Helper functions to help define broadcasting/arithmetic with Tensors.
-# By converting a broadcast involving Tensors into a broadcast
+# Helper functions to help define broadcasting/arithmetic with ArrayOperators.
+# By converting a broadcast involving ArrayOperators into a broadcast
 # involving the underlying arrays.
-_unwrap(t::Tensor) = t.data
+_unwrap(t::ArrayOperator) = t.data
+_unwrap(bc::Broadcast.Broadcasted) = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
 _unwrap(x) = x
 _unwrap_args(args::Tuple) = map(_unwrap, args)
 
@@ -76,11 +88,11 @@ function Base.copy(bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
     # or is overriden such as with DualArrays
     databroadcast = Base.broadcasted(bc.f, _unwrap_args(bc.args)...)
     result = databroadcast isa Broadcast.Broadcasted ? copy(Broadcast.flatten(databroadcast)) : databroadcast
-    Tensor{N}(result)
+    ArrayOperator{N}(result)
 end
 
 # copyto adds support for .=
-function Base.copyto!(dest::Tensor, bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
+function Base.copyto!(dest::ArrayOperator, bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{N}}) where {N}
     # As above
     databroadcast = Base.broadcasted(bc.f, _unwrap_args(bc.args)...)
     if databroadcast isa Broadcast.Broadcasted
@@ -92,27 +104,29 @@ function Base.copyto!(dest::Tensor, bc::Broadcast.Broadcasted{TensorBroadcastSty
 end
 
 """
-    Dual{T, Partials <: AbstractVector{T}} <: Real
+    Dual{T, Partials <: AbstractArray{T}} <: Real
 
 A dual number type that stores a value and its partials (derivatives).
 
 # Fields
 - `value::T`: The primal value
-- `partials::Partials`: The partial derivatives as a tensor mapping to a scalar
+- `partials::Partials`: The partial derivatives stored as an array
+
+NOTE: Partials will soon be in the ArrayOperator format. 
 """
-struct Dual{T, Partials <: (Tensor{L, T, 0, M} where {L, M})} <: Real
+struct Dual{T, Partials <: AbstractArray{T}} <: Real
     value::T
     partials::Partials
 end
 
-function Dual(value::T, partials::Tensor{L, S, 0, M}) where {S, T, L, M}
+function Dual(value::T, partials::AbstractArray{S}) where {S, T}
     T2 = promote_type(T, S)
-    Dual{T2, Tensor{L, T2, 0, M}}(convert(T2, value), convert(Tensor{L, T2, 0, M}, partials))
+    Dual(convert(T2, value), _convert_array(T2, partials))
 end
 
-# Helper function to define Duals from an AbstractArray
-function Dual(value, partials::AbstractArray{T, N}) where {T, N}
-    Dual(value, Tensor{0}(partials))
+function Dual(value::T, partials::ArrayOperator{L, S, 0, M}) where {L, S, M, T}
+    T2 = promote_type(T, S)
+    Dual(convert(T2, value), _convert_array(T2, partials).data)
 end
 
 """
@@ -133,62 +147,36 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualVector{T, V <: AbstractVector{T},J <: (Tensor{L, T, 1, M} where {L, M})} <: AbstractVector{Dual{T}}
-    value::V
+struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{L, T, N, M} where {L, M})} <: AbstractVector{Dual{T}}
+    value::A
     jacobian::J
 
-    function DualVector(value::V, jacobian::J) where {T, V <: AbstractVector{T}, J <: (Tensor{L, T, 1, M} where {L, M})}
-        if length(value) != size(jacobian, 1)
+    function DualArray(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{L, T, N, M} where {L, M})}
+        if size(value) != ntuple(i -> size(jacobian, i), N)
             throw(ArgumentError("Length of value vector must match number of rows in Jacobian."))
         end
-        new{T, V, J}(value, jacobian)
+        new{T,N, A, J}(value, jacobian)
     end
 end
 
 """
 Constructor that forces type compatibility
 """
-function DualVector(value::AbstractVector, jacobian::Tensor)
+function DualArray(value::AbstractArray, jacobian::ArrayOperator)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualVector(_convert_array(T, value), _convert_array(T, jacobian))
+    DualArray(_convert_array(T, value), _convert_array(T, jacobian))
 end
 
-# Helper function to define DualVectors with AbstractArray jacobians
-function DualVector(value::AbstractVector, jacobian::AbstractArray{T, N}) where {T, N}
-    DualVector(value, Tensor{1}(jacobian))
+# Helper function to define DualArrays with AbstractArray jacobians
+function DualArray(value::AbstractArray{S, M}, jacobian::AbstractArray{T, N}) where {S, T, N, M}
+    DualArray(value, ArrayOperator{M}(jacobian))
 end
 
-"""
-    DualMatrix{T, M <: AbstractMatrix{T}, J } <: AbstractMatrix{Dual{T}}
-"""
+const DualVector = DualArray{T, 1} where {T}
+const DualMatrix = DualArray{T, 2} where {T}
 
-struct DualMatrix{T, M <: AbstractMatrix{T}, J <: (Tensor{L, T, 2, M} where {L, M})} <: AbstractMatrix{Dual{T}}
-    value::M
-    jacobian::J
-
-    function DualMatrix(value::M, jacobian::J) where {T, M <: AbstractMatrix{T}, J <: (Tensor{L, T, 2, N} where {L, N})}
-        if size(value, 1) != size(jacobian, 1) || size(value, 2) != size(jacobian, 2)
-            throw(ArgumentError("Dimensions of value matrix must match inner dimensions of Jacobian tensor."))
-        end
-        new{T, M, J}(value, jacobian)
-    end
-end
-
-function DualMatrix(value::AbstractMatrix, jacobian::Tensor)
-    T = promote_type(eltype(value), eltype(jacobian))
-    DualMatrix(_convert_array(T, value), _convert_array(T, jacobian))
-end
-
-function DualMatrix(value::AbstractMatrix, jacobian::AbstractArray{T, N}) where {T, N}
-    DualMatrix(value, Tensor{2}(jacobian))
-end
-
-# For convenience
-DualArray = Union{DualVector, DualMatrix}
-
-_convert_array(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(_convert_array(T, a.value), _convert_array(T, a.jacobian))
-_convert_array(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(_convert_array(T, a.value), _convert_array(T, a.jacobian))
-
+DualVector(value::AbstractVector, jacobian) = DualArray(value, jacobian)
+DualMatrix(value::AbstractMatrix, jacobian) = DualArray(value, jacobian)
 # Basic equality for Dual numbers
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials
 isapprox(a::Dual, b::Dual) = isapprox(a.value, b.value) && isapprox(a.partials, b.partials)

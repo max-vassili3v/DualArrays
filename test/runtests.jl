@@ -1,20 +1,24 @@
-using DualArrays, Test, LinearAlgebra, ForwardDiff, BandedMatrices, FillArrays
-using DualArrays: Tensor
+using DualArrays, Test, LinearAlgebra, ForwardDiff, BandedMatrices
+using DualArrays: ArrayOperator
 
 @testset "DualArrays" begin
     
     @testset "Type Definition" begin
         @test_throws ArgumentError DualVector([1,2],I(3))
-        @test Dual(1.0, [1, 2, 3]).partials == Tensor{0}([1.0, 2.0, 3.0])
-
-        @test_throws ArgumentError DualMatrix([1 2; 3 4], ones(3,3,3))
+        @test Dual(1.0, [1, 2, 3]).partials == [1.0, 2.0, 3.0]
     end
     
-    @testset "Indexing (Vector)" begin
+    @testset "Indexing" begin
         v = DualVector([1., 2, 3], [1 2 3; 4 5 6;7 8 9])
+        m = DualMatrix([1 2;3 4], zeros(2, 2, 2))
 
         @test size(v) == (3,)
         @test axes(v) == (Base.OneTo(3),)
+
+        @test size(m) == (2, 2)
+        @test axes(m) == (Base.OneTo(2), Base.OneTo(2))
+
+        @test m[1, 1] == Dual(1, [0, 0])
 
         @test v[1] isa Dual
         @test v[1] == Dual(1,[1,2,3])
@@ -109,6 +113,10 @@ using DualArrays: Tensor
         @test vcat(x) == DualVector([1], [1 2 3])
         @test vcat(x, x) == DualVector([1, 1], [1 2 3;1 2 3])
         @test vcat(x, y) == DualVector([1, 2, 3], [1 2 3;4 5 6;7 8 9])
+
+        z = DualVector([2, 3], [1 0; 0 1])
+        @test vcat(1, z).jacobian.data == [0 0; 1 0; 0 1]
+        @test vcat(z, 1).jacobian.data == [1 0; 0 1; 0 0]
     end
 
     @testset "show" begin
@@ -127,5 +135,5 @@ using DualArrays: Tensor
     end
     
     include("broadcast_test.jl")
-    include("tensor_test.jl")
+    include("array_operator_test.jl")
 end
