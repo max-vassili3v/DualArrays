@@ -36,6 +36,7 @@ _convert_array(::Type{T}, a::AbstractArray{T}) where {T} = a
 _convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
 _convert_array(::Type{T}, t::ArrayOperator{L, S, N, M}) where {T, L, S, N, M} = ArrayOperator{L, T, N, M}(_convert_array(T, t.data))
 
+
 # Basic array interface
 for op in (:size, :axes, :iterate)
     @eval begin
@@ -49,7 +50,6 @@ eltype(t::ArrayOperator) = eltype(t.data)
 
 Base.Broadcast.broadcastable(t::ArrayOperator) = t
 
-transpose(t::ArrayOperator) = transpose(t.data)
 sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
 
 ==(a::ArrayOperator, b::ArrayOperator) = a.data == b.data
@@ -82,7 +82,7 @@ _unwrap(x) = x
 _unwrap_args(args::Tuple) = map(_unwrap, args)
 
 # copy ensures that arithmetic involving a Tensor returns a Tensor
-function Base.copy(bc::Broadcast.Broadcasted{TensorBroadcastStyle{N}}) where {N}
+function Base.copy(bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{N}}) where {N}
     # We create a Broadcasted of the underlying arrays and create a Tensor containing
     # the evaluated broadcast. We check if Base.broadcasted is a Broadcasted
     # or is overriden such as with DualArrays
@@ -129,6 +129,8 @@ function Dual(value::T, partials::ArrayOperator{L, S, 0, M}) where {L, S, M, T}
     Dual(convert(T2, value), _convert_array(T2, partials).data)
 end
 
+Dual(value::T, partials::ArrayOperator{L, T}) where {L, T} = Dual(value, partials.data)
+
 """
     DualVector{T, M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
 
@@ -174,6 +176,9 @@ end
 
 const DualVector = DualArray{T, 1} where {T}
 const DualMatrix = DualArray{T, 2} where {T}
+
+_convert_array(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(_convert_array(T, a.value), _convert_array(T, a.jacobian))
+_convert_array(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(_convert_array(T, a.value), _convert_array(T, a.jacobian))
 
 DualVector(value::AbstractVector, jacobian) = DualArray(value, jacobian)
 DualMatrix(value::AbstractMatrix, jacobian) = DualArray(value, jacobian)

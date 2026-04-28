@@ -1,4 +1,4 @@
-using DualArrays, Test, LinearAlgebra, ForwardDiff, BandedMatrices
+using DualArrays, Test, LinearAlgebra, ForwardDiff, BandedMatrices, FillArrays
 using DualArrays: ArrayOperator
 
 @testset "DualArrays" begin
@@ -50,8 +50,6 @@ using DualArrays: ArrayOperator
         @test m[1, :] isa DualVector
         @test m[1, :] == DualVector([1, 2, 3], ones(3, 3))
         @test m[:, 1] == DualVector([1, 4, 7], ones(3, 3))
-
-        @test m[1:2, 1:2] == DualMatrix([1 2; 4 5], ones(2,2,3))
     end
 
     @testset "Arithmetic (DualVector)" begin

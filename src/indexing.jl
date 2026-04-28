@@ -8,6 +8,7 @@ sparse_getindex(a...) = layout_getindex(a...)
 # TODO: should we move these?
 sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, size(D, 2))
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
+sparse_getindex(d::DualArray, args...) = d[args...]
 
 # We need a system of indexing that takes two tuples
 # of length N and M. We must then return a ArrayOperator whose new input and output dimensions

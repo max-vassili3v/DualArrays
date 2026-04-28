@@ -1,10 +1,10 @@
 # Arithmetic operations for DualArrays.jl
 
 # Tensor transpose
-Base.transpose(t::Tensor{<:Any, <:Any, <:N, <:Any}) where {N} = Tensor{N}(transpose(t.data))
+transpose(t::ArrayOperator{<:Any, <:Any, <:N, <:Any}) where {N} = ArrayOperator{N}(transpose(t.data))
 # Special case: Transpose of a vector becomes a matrix
 # TODO: Technically a row vector is a Tensor{1, T, 1, 0}
-Base.transpose(t::Tensor{1, <:Any, 0, <:Any}) = Tensor{1}(transpose(t.data))
+transpose(t::ArrayOperator{1, <:Any, 0, <:Any}) = ArrayOperator{1}(transpose(t.data))
 
 """
 Addition/Subtraction of DualVectors.
