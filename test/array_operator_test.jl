@@ -33,7 +33,7 @@ using DualArrays: ArrayOperator
         t2 = ArrayOperator{1}([1 2 3])
         t3 = ArrayOperator{0}([2])
 
-        @test t1 .+ ones(3, 3) == [2 2 2;3 3 3; 4 4 4]
+        @test_throws ArgumentError t1 .+ ones(3, 3)
         @test t1 .* t2 == ArrayOperator{1}([1 2 3;2 4 6;3 6 9])
         @test t1 .* t2 .+ t3 == ArrayOperator{1}([3 4 5;4 6 8;5 8 11])
 
@@ -55,5 +55,7 @@ using DualArrays: ArrayOperator
         @test 2 * t == [2 4 6;8 10 12;14 16 18]
 
         @test s - t == ones(3, 3)
+
+        @test_throws ArgumentError ArrayOperator{1}(ones(3,3)) .* ArrayOperator{0}(ones(3,3))
     end
 end

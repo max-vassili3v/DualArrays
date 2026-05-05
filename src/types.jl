@@ -58,19 +58,48 @@ isapprox(a::ArrayOperator, b::ArrayOperator; kwargs...) = isapprox(a.data, b.dat
 isapprox(a::ArrayOperator, b::AbstractArray; kwargs...) = isapprox(a.data, b; kwargs...)
 isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(b, a)
 
-# Below we define a broadcast style for ArrayOperators and override copy and copyto!
-# This allows all arithmetic/broadcasting with ArrayOperators to be handled by the
-# underlying logic of the array contained in the struct, while ensuring that
-# all results stay as a ArrayOperator.
+# --------------------
+# Broadcasting with ArrayOperators
+# --------------------
+#
+# We want broadcasting on ArrayOperators to behave 
+# as it would on the underlying array, but preserving the
+# ArrayOperator{N, M, T, L} type with the correct type parameters.
+# T and L are preserved or inferred from type promotion.
+# When the highest order is an ArrayOperator, N and M of that
+# ArrayOperator are preserved. We do not support binary broadcasts
+# for cases where:
+#
+# 1. The highest order is not an ArrayOperator
+# 2. We have an (N, M) ArrayOperator and an (N2, M2) ArrayOperator
+#    with N + M = N2 + M2 but (N, M) != (N2, M2).
+#
+# As inferring N and M of the resulting ArrayOperator is ambiguous.
 
-struct ArrayOperatorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{0} end
+# We define a custom broadcast style.
+# We inherit from the L-array broadcast style and require output dimension N
+# as extra information.
+struct ArrayOperatorBroadcastStyle{L, N} <: Broadcast.AbstractArrayStyle{L} end
 
-# N is the input dimension of the tensor being broadcasted.
-# For he result of the broadcast we will choose to preserve the highest input dimension. 
-Base.BroadcastStyle(::Type{<:ArrayOperator{<:Any, <:Any, N, <:Any}}) where {N} = ArrayOperatorBroadcastStyle{N}()
-Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{M}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
-Base.BroadcastStyle(::Broadcast.DefaultArrayStyle{M}, ::ArrayOperatorBroadcastStyle{N}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
-Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::ArrayOperatorBroadcastStyle{M}) where {N, M} = ArrayOperatorBroadcastStyle{max(N, M)}()
+Base.BroadcastStyle(::Type{<:ArrayOperator{L, <:Any, N, <:Any}}) where {L, N} = ArrayOperatorBroadcastStyle{L, N}()
+function Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{L, N}, ::Broadcast.DefaultArrayStyle{M}) where {L, N, M}
+    # Julia optimises these checks at compile time.
+    if L >= M
+        ArrayOperatorBroadcastStyle{L, N}()
+    else
+        throw(ArgumentError("Ambiguous output dimension for resulting ArrayOperator"))
+    end
+end
+Base.BroadcastStyle(a::Broadcast.DefaultArrayStyle{M}, b::ArrayOperatorBroadcastStyle{L, N}) where {L, N, M} = Base.BroadcastStyle(b, a)
+function Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{L1, N1},::ArrayOperatorBroadcastStyle{L2, N2}) where {L1, N1, L2, N2}
+    if L1 > L2
+        ArrayOperatorBroadcastStyle{L1, N1}()
+    elseif L2 > L1
+        ArrayOperatorBroadcastStyle{L2, N2}()
+    else
+        throw(ArgumentError("Ambiguous output dimension for resulting ArrayOperator"))
+    end
+end
 
 # Helper functions to help define broadcasting/arithmetic with ArrayOperators.
 # By converting a broadcast involving ArrayOperators into a broadcast
@@ -89,7 +118,7 @@ function Base.copy(bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{N}}) wh
 end
 
 # copyto adds support for .=
-function Base.copyto!(dest::ArrayOperator, bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{N}}) where {N}
+function Base.copyto!(dest::ArrayOperator, bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{L, N}}) where {L, N}
     # As above
     databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
     copyto!(dest.data, Broadcast.flatten(databroadcast))
