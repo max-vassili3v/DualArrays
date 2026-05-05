@@ -51,12 +51,9 @@ Base.Broadcast.broadcastable(t::ArrayOperator) = t
 transpose(t::ArrayOperator) = transpose(t.data)
 sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
 
-==(a::ArrayOperator, b::ArrayOperator) = a.data == b.data
-==(a::ArrayOperator, b::AbstractArray) = a.data == b
-==(a::AbstractArray, b::ArrayOperator) = a == b.data
-isapprox(a::ArrayOperator, b::ArrayOperator; kwargs...) = isapprox(a.data, b.data; kwargs...)
-isapprox(a::ArrayOperator, b::AbstractArray; kwargs...) = isapprox(a.data, b; kwargs...)
-isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(b, a)
+# Equality is only defined for two ArrayOperators of the same (N, M).
+==(a::ArrayOperator{N, M}, b::ArrayOperator{N, M}) where {N, M} = a.data == b.data
+isapprox(a::ArrayOperator{N, M}, b::ArrayOperator{N, M}; kwargs...) where {N, M} = isapprox(a.data, b.data; kwargs...)
 
 # --------------------
 # Broadcasting with ArrayOperators
