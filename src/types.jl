@@ -22,18 +22,18 @@ a + Jϵ
 Where a is an N-array of real numbers, J is an N+M=tensor and ϵ is an M-array of dual parts.
 In the simplest case, where N = 0, we have a Dual number with dual parts arranged in an M-array.
 """
-struct ArrayOperator{L, T, N, M}
+struct ArrayOperator{N, M, T, L}
     data::AbstractArray{T, L}
 end
 
 # Constructor to wrap an array with a tensor, given a contraction rule represented by N
 function ArrayOperator{N}(data::AbstractArray{T, L}) where {L, T, N}
-    ArrayOperator{L, T, N, L - N}(data)
+    ArrayOperator{N, L - N, T, L}(data)
 end
 
 # Helper convert function
 _convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
-_convert_array(::Type{T}, t::ArrayOperator{L, S, N, M}) where {T, L, S, N, M} = ArrayOperator{L, T, N, M}(_convert_array(T, t.data))
+_convert_array(::Type{T}, t::ArrayOperator{N, M, S, L}) where {T, N, M, S, L} = ArrayOperator{N, M, T, L}(_convert_array(T, t.data))
 
 # Basic array interface
 for op in (:size, :axes, :iterate)
@@ -81,7 +81,7 @@ isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(b, a)
 # as extra information.
 struct ArrayOperatorBroadcastStyle{L, N} <: Broadcast.AbstractArrayStyle{L} end
 
-Base.BroadcastStyle(::Type{<:ArrayOperator{L, <:Any, N, <:Any}}) where {L, N} = ArrayOperatorBroadcastStyle{L, N}()
+Base.BroadcastStyle(::Type{<:ArrayOperator{N, <:Any, <:Any, L}}) where {L, N} = ArrayOperatorBroadcastStyle{L, N}()
 function Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{L, N}, ::Broadcast.DefaultArrayStyle{M}) where {L, N, M}
     # Julia optimises these checks at compile time.
     if L >= M
@@ -110,7 +110,7 @@ _unwrap(x) = x
 _unwrap_args(args::Tuple) = map(_unwrap, args)
 
 # copy ensures that arithmetic involving a ArrayOperator returns a ArrayOperator
-function Base.copy(bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{N}}) where {N}
+function Base.copy(bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{L, N}}) where {L, N}
     # We create a Broadcasted of the underlying arrays and create a ArrayOperator containing
     # the evaluated broadcast
     databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
@@ -146,7 +146,7 @@ function Dual(value::T, partials::AbstractArray{S}) where {S, T}
     Dual(convert(T2, value), _convert_array(T2, partials))
 end
 
-function Dual(value::T, partials::ArrayOperator{L, S, 0, M}) where {L, S, M, T}
+function Dual(value::T, partials::ArrayOperator{0, M, S, L}) where {L, S, M, T}
     T2 = promote_type(T, S)
     Dual(convert(T2, value), _convert_array(T2, partials).data)
 end
@@ -169,11 +169,11 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{L, T, N, M} where {L, M})} <: AbstractVector{Dual{T}}
+struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractVector{Dual{T}}
     value::A
     jacobian::J
 
-    function DualArray(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{L, T, N, M} where {L, M})}
+    function DualArray(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})}
         if size(value) != ntuple(i -> size(jacobian, i), N)
             throw(ArgumentError("Length of value vector must match number of rows in Jacobian."))
         end

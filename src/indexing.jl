@@ -27,14 +27,14 @@ sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, siz
 Idx = Union{Int, Colon, AbstractUnitRange}
 count_ints(t::Tuple) = count(x -> x isa Int, t)
 
-function getindex(t::ArrayOperator{<:Any, T, N, M}, i::NTuple{N, Idx}, j::NTuple{M, Idx}) where {T, N, M}
+function getindex(t::ArrayOperator{N, M, <:Any, <:Any}, i::NTuple{N, Idx}, j::NTuple{M, Idx}) where {N, M}
     # new value of M is inferred from the ArrayOperator constructor and the order of
     # indexing the underlying array.
     newN = N - count_ints(i)
     ArrayOperator{newN}(sparse_getindex(t.data, i..., j...))
 end
 
-function getindex(t::ArrayOperator{<:Any, T, N, M}, i::NTuple{N, Idx}, ::Colon) where {T, N, M}
+function getindex(t::ArrayOperator{N, M, <:Any, <:Any}, i::NTuple{N, Idx}, ::Colon) where {N, M}
     # new value of M is inferred from the ArrayOperator constructor and the order of
     # indexing the underlying array.
     newN = N - count_ints(i)
@@ -43,7 +43,7 @@ end
 # Integer indexing always returns a scalar.
 getindex(t::ArrayOperator, i::Vararg{Int}) = getindex(t.data, i...)
 # Indexing with only slices/ranges returns a similar tensor
-getindex(t::ArrayOperator{<:Any, <:Any, N, M}, i::Vararg{Union{Colon, UnitRange}}) where {N, M} = ArrayOperator{N}(sparse_getindex(t.data, i...))
+getindex(t::ArrayOperator{N, M, <:Any, <:Any}, i::Vararg{Union{Colon, UnitRange}}) where {N, M} = ArrayOperator{N}(sparse_getindex(t.data, i...))
 
 """
 Extract a single Dual number from a DualArray.

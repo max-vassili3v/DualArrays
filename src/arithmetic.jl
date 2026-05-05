@@ -135,16 +135,16 @@ function _contract(x, y, A, B, C)
     return TensorOperations.tensorcontract(x, x_idx, false, y, y_idx, false, ret_idx, 1)
 end
 
-function *(x::ArrayOperator{<:Any, <:Any, A, B}, y::ArrayOperator{<:Any, <:Any, B, C}) where {A, B, C}
+function *(x::ArrayOperator{A, B, <:Any, <:Any}, y::ArrayOperator{B, C, <:Any, <:Any}) where {A, B, C}
     return ArrayOperator{A}(_contract(x.data, y.data, A, B, C))
 end
 
-function *(x::ArrayOperator{<:Any, <:Any, A, B}, y::AbstractArray{<:Any, L}) where {A, B, L}
+function *(x::ArrayOperator{A, B, <:Any, <:Any}, y::AbstractArray{<:Any, L}) where {A, B, L}
     C = L - B
     return ArrayOperator{A}(_contract(x.data, y, A, B, C))
 end
 
-function *(x::AbstractArray{<:Any, L}, y::ArrayOperator{<:Any, <:Any, B, C}) where {L, B, C}
+function *(x::AbstractArray{<:Any, L}, y::ArrayOperator{B, C, <:Any, <:Any}) where {L, B, C}
     A = L - B
     return ArrayOperator{A}(_contract(x, y.data, A, B, C))
 end
@@ -154,8 +154,8 @@ Base.:+(x::ArrayOperator, y::ArrayOperator) = x .+ y
 Base.:-(x::ArrayOperator, y::ArrayOperator) = x .- y
 Base.:-(x::ArrayOperator) = (-).(x)
 
-Base.:*(a::Number, t::ArrayOperator{L, T, N, M}) where {L, T, N, M} =
-    ArrayOperator{L, promote_type(typeof(a), T), N, M}(a .* t.data)
+Base.:*(a::Number, t::ArrayOperator{N, M, T, L}) where {N, M, T, L} =
+    ArrayOperator{N, M, promote_type(typeof(a), T), L}(a .* t.data)
 Base.:*(t::ArrayOperator, a::Number) = a * t
 
 
