@@ -63,9 +63,9 @@ value = result.value.value
 # equivalent to b
 gradient = result.value.partials
 # equivalent to c
-gradient2 = result.partials.data.value
+gradient2 = result.partials.value
 # equivalent to d
-hessian = result.partials.data.jacobian
+hessian = result.partials.jacobian.data
 
 # We expect this to be 6
 print("Value: ", value, "\n")

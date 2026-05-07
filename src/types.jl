@@ -178,7 +178,7 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractArray{Dual{T}}
+struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractArray{Dual{T}, N}
     value::A
     jacobian::J
 

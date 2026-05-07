@@ -50,7 +50,9 @@ end
 Custom display method for DualVectors.
 """
 show(io::IO, ::MIME"text/plain", x::DualArray) = 
-    (print(io, x.value); print(io, " + "); print(io, x.jacobian); print(io, "𝛜"))
+    (show(io, x.value); print(io, " + "); show(io, x.jacobian); print(io, "𝛜"))
+
+show(io::IO, x::DualArray) = show(io, MIME"text/plain"(), x)
 
 """
 Utility function to compute the jacobian of a function `f` at point `x`.
