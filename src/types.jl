@@ -22,19 +22,19 @@ a + Jϵ
 Where a is an N-array of real numbers, J is an N+M=tensor and ϵ is an M-array of dual parts.
 In the simplest case, where N = 0, we have a Dual number with dual parts arranged in an M-array.
 """
-struct ArrayOperator{L, T, N, M}
+struct ArrayOperator{N, M, T, L}
     data::AbstractArray{T, L}
 end
 
 # Constructor to wrap an array with a tensor, given a contraction rule represented by N
 function ArrayOperator{N}(data::AbstractArray{T, L}) where {L, T, N}
-    ArrayOperator{L, T, N, L - N}(data)
+    ArrayOperator{N, L - N, T, L}(data)
 end
 
 # Helper convert function
 _convert_array(::Type{T}, a::AbstractArray{T}) where {T} = a
 _convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
-_convert_array(::Type{T}, t::ArrayOperator{L, S, N, M}) where {T, L, S, N, M} = ArrayOperator{L, T, N, M}(_convert_array(T, t.data))
+_convert_array(::Type{T}, t::ArrayOperator{N, M, S, L}) where {T, N, M, S, L} = ArrayOperator{N, M, T, L}(_convert_array(T, t.data))
 
 
 # Basic array interface
@@ -52,26 +52,52 @@ Base.Broadcast.broadcastable(t::ArrayOperator) = t
 
 sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
 
-==(a::ArrayOperator, b::ArrayOperator) = a.data == b.data
-==(a::ArrayOperator, b::AbstractArray) = a.data == b
-==(a::AbstractArray, b::ArrayOperator) = a == b.data
-isapprox(a::ArrayOperator, b::ArrayOperator; kwargs...) = isapprox(a.data, b.data; kwargs...)
-isapprox(a::ArrayOperator, b::AbstractArray; kwargs...) = isapprox(a.data, b; kwargs...)
-isapprox(a::AbstractArray, b::ArrayOperator; kwargs...) = isapprox(b, a)
+# Equality is only defined for two ArrayOperators of the same (N, M).
+==(a::ArrayOperator{N, M}, b::ArrayOperator{N, M}) where {N, M} = a.data == b.data
+isapprox(a::ArrayOperator{N, M}, b::ArrayOperator{N, M}; kwargs...) where {N, M} = isapprox(a.data, b.data; kwargs...)
 
-# Below we define a broadcast style for ArrayOperators and override copy and copyto!
-# This allows all arithmetic/broadcasting with ArrayOperators to be handled by the
-# underlying logic of the array contained in the struct, while ensuring that
-# all results stay as a ArrayOperator.
+# --------------------
+# Broadcasting with ArrayOperators
+# --------------------
+#
+# We want broadcasting on ArrayOperators to behave 
+# as it would on the underlying array, but preserving the
+# ArrayOperator{N, M, T, L} type with the correct type parameters.
+# T and L are preserved or inferred from type promotion.
+# When the highest order is an ArrayOperator, N and M of that
+# ArrayOperator are preserved. We do not support binary broadcasts
+# for cases where:
+#
+# 1. The highest order is not an ArrayOperator
+# 2. We have an (N, M) ArrayOperator and an (N2, M2) ArrayOperator
+#    with N + M = N2 + M2 but (N, M) != (N2, M2).
+#
+# As inferring N and M of the resulting ArrayOperator is ambiguous.
 
-struct ArrayOperatorBroadcastStyle{N} <: Broadcast.AbstractArrayStyle{0} end
+# We define a custom broadcast style.
+# We inherit from the L-array broadcast style and require output dimension N
+# as extra information.
+struct ArrayOperatorBroadcastStyle{L, N} <: Broadcast.AbstractArrayStyle{L} end
 
-# N is the input dimension of the tensor being broadcasted.
-# For he result of the broadcast we will choose to preserve the highest input dimension. 
-Base.BroadcastStyle(::Type{<:ArrayOperator{<:Any, <:Any, N, <:Any}}) where {N} = ArrayOperatorBroadcastStyle{N}()
-Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::Broadcast.DefaultArrayStyle{M}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
-Base.BroadcastStyle(::Broadcast.DefaultArrayStyle{M}, ::ArrayOperatorBroadcastStyle{N}) where {N, M} = ArrayOperatorBroadcastStyle{N}()
-Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{N}, ::ArrayOperatorBroadcastStyle{M}) where {N, M} = ArrayOperatorBroadcastStyle{max(N, M)}()
+Base.BroadcastStyle(::Type{<:ArrayOperator{N, <:Any, <:Any, L}}) where {L, N} = ArrayOperatorBroadcastStyle{L, N}()
+function Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{L, N}, ::Broadcast.DefaultArrayStyle{M}) where {L, N, M}
+    # Julia optimises these checks at compile time.
+    if L >= M
+        ArrayOperatorBroadcastStyle{L, N}()
+    else
+        throw(ArgumentError("Ambiguous output dimension for resulting ArrayOperator"))
+    end
+end
+Base.BroadcastStyle(a::Broadcast.DefaultArrayStyle{M}, b::ArrayOperatorBroadcastStyle{L, N}) where {L, N, M} = Base.BroadcastStyle(b, a)
+function Base.BroadcastStyle(::ArrayOperatorBroadcastStyle{L1, N1},::ArrayOperatorBroadcastStyle{L2, N2}) where {L1, N1, L2, N2}
+    if L1 > L2
+        ArrayOperatorBroadcastStyle{L1, N1}()
+    elseif L2 > L1
+        ArrayOperatorBroadcastStyle{L2, N2}()
+    else
+        throw(ArgumentError("Ambiguous output dimension for resulting ArrayOperator"))
+    end
+end
 
 # Helper functions to help define broadcasting/arithmetic with ArrayOperators.
 # By converting a broadcast involving ArrayOperators into a broadcast
@@ -82,7 +108,7 @@ _unwrap(x) = x
 _unwrap_args(args::Tuple) = map(_unwrap, args)
 
 # copy ensures that arithmetic involving a Tensor returns a Tensor
-function Base.copy(bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{N}}) where {N}
+function Base.copy(bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{L, N}}) where {L, N}
     # We create a Broadcasted of the underlying arrays and create a Tensor containing
     # the evaluated broadcast. We check if Base.broadcasted is a Broadcasted
     # or is overriden such as with DualArrays
@@ -92,7 +118,7 @@ function Base.copy(bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{N}}) wh
 end
 
 # copyto adds support for .=
-function Base.copyto!(dest::ArrayOperator, bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{N}}) where {N}
+function Base.copyto!(dest::ArrayOperator, bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{L, N}}) where {L, N}
     # As above
     databroadcast = Base.broadcasted(bc.f, _unwrap_args(bc.args)...)
     if databroadcast isa Broadcast.Broadcasted
@@ -124,10 +150,13 @@ function Dual(value::T, partials::AbstractArray{S}) where {S, T}
     Dual(convert(T2, value), _convert_array(T2, partials))
 end
 
-function Dual(value::T, partials::ArrayOperator{L, S, 0, M}) where {L, S, M, T}
+function Dual(value::T, partials::ArrayOperator{0, M, S, L}) where {L, S, M, T}
     T2 = promote_type(T, S)
     Dual(convert(T2, value), _convert_array(T2, partials).data)
 end
+
+# Lets us declare duals with a column vector as well as a row vector.
+Dual(value::T, partials::ArrayOperator{N, 0, S, L}) where {L, S, N, T} = Dual(value, ArrayOperator{0}(partials.data))
 
 Dual(value::T, partials::ArrayOperator{L, T}) where {L, T} = Dual(value, partials.data)
 
@@ -149,11 +178,11 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{L, T, N, M} where {L, M})} <: AbstractVector{Dual{T}}
+struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractArray{Dual{T}}
     value::A
     jacobian::J
 
-    function DualArray(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{L, T, N, M} where {L, M})}
+    function DualArray(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})}
         if size(value) != ntuple(i -> size(jacobian, i), N)
             throw(ArgumentError("Length of value vector must match number of rows in Jacobian."))
         end

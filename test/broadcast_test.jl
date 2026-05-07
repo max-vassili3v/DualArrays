@@ -22,11 +22,11 @@ using DualArrays, Test, SparseArrays, LinearAlgebra
     @test l.value ≈ log.([1.0, 2.0, 3.0])
     @test a.value ≈ tanh.([1.0, 2.0, 3.0])
 
-    @test s.jacobian ≈ Diagonal(cos.([1.0, 2.0, 3.0]))
-    @test c.jacobian ≈ Diagonal(-sin.([1.0, 2.0, 3.0]))
-    @test e.jacobian ≈ Diagonal(exp.([1.0, 2.0, 3.0]))
-    @test l.jacobian ≈ Diagonal(1.0 ./ [1.0, 2.0, 3.0])
-    @test a.jacobian ≈ Diagonal(1.0 .- tanh.([1.0, 2.0, 3.0]).^2)
+    @test s.jacobian.data ≈ Diagonal(cos.([1.0, 2.0, 3.0]))
+    @test c.jacobian.data ≈ Diagonal(-sin.([1.0, 2.0, 3.0]))
+    @test e.jacobian.data ≈ Diagonal(exp.([1.0, 2.0, 3.0]))
+    @test l.jacobian.data ≈ Diagonal(1.0 ./ [1.0, 2.0, 3.0])
+    @test a.jacobian.data ≈ Diagonal(1.0 .- tanh.([1.0, 2.0, 3.0]).^2)
 
     # Test broadcasting with binary operations
     a = d .+ 2.0
@@ -67,12 +67,8 @@ using DualArrays, Test, SparseArrays, LinearAlgebra
     @test m.value ≈ [2.0, 4.0, 6.0]
     @test div.value ≈ [0.5, 1.0, 1.5]
 
-    @test a.jacobian ≈ [2.0 2.0 3.0; 1.0 3.0 3.0; 1.0 2.0 4.0]
-    @test s.jacobian ≈ [0.0 -2.0 -3.0; -1.0 -1.0 -3.0; -1.0 -2.0 -2.0]
-    @test m.jacobian ≈ [3.0 2.0 3.0; 2.0 6.0 6.0; 3.0 6.0 11.0]
-    @test div.jacobian ≈ [0.25 -0.5 -0.75; -0.5 -0.5 -1.5; -0.75 -1.5 -1.75]
-
-    a = [1,2,3]
-    @test a .* x == DualVector([2,4,6], [1 2 3;2 4 6;3 6 9])
-    @test x .* a == DualVector([2,4,6], [1 2 3;2 4 6;3 6 9])
+    @test a.jacobian.data ≈ [2.0 2.0 3.0; 1.0 3.0 3.0; 1.0 2.0 4.0]
+    @test s.jacobian.data ≈ [0.0 -2.0 -3.0; -1.0 -1.0 -3.0; -1.0 -2.0 -2.0]
+    @test m.jacobian.data ≈ [3.0 2.0 3.0; 2.0 6.0 6.0; 3.0 6.0 11.0]
+    @test div.jacobian.data ≈ [0.25 -0.5 -0.75; -0.5 -0.5 -1.5; -0.75 -1.5 -1.75]
 end

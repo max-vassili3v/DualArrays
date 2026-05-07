@@ -5,10 +5,10 @@ using DualArrays: ArrayOperator
     t = ArrayOperator{1}([1 2 3;4 5 6;7 8 9])
 
     @testset "Equality" begin
-        @test t == [1 2 3;4 5 6;7 8 9]
-        @test [1 2 3;4 5 6;7 8 9] == t
-        @test isapprox(t, [1 2 3;4 5 6;7 8 9])
-        @test isapprox([1 2 3;4 5 6;7 8 9], t)
+        @test t == ArrayOperator{1}([1 2 3;4 5 6;7 8 9])
+        @test isapprox(t, ArrayOperator{1}([1 2 3;4 5 6;7 8 9]))
+        @test t != [1 2 3;4 5 6;7 8 9]
+        @test t != ArrayOperator{0}([1 2 3;4 5 6;7 8 9])
     end
     @testset "Indexing" begin
         @test t[1,1] == 1
@@ -33,7 +33,7 @@ using DualArrays: ArrayOperator
         t2 = ArrayOperator{1}([1 2 3])
         t3 = ArrayOperator{0}([2])
 
-        @test t1 .+ ones(3, 3) == [2 2 2;3 3 3; 4 4 4]
+        @test_throws ArgumentError t1 .+ ones(3, 3)
         @test t1 .* t2 == ArrayOperator{1}([1 2 3;2 4 6;3 6 9])
         @test t1 .* t2 .+ t3 == ArrayOperator{1}([3 4 5;4 6 8;5 8 11])
 
@@ -51,9 +51,11 @@ using DualArrays: ArrayOperator
         @test t * [1, 0, 0] == ArrayOperator{1}([1,4,7])
         @test [1 0 0] * t == ArrayOperator{1}([1 2 3])
 
-        @test t * 2 == [2 4 6;8 10 12;14 16 18]
-        @test 2 * t == [2 4 6;8 10 12;14 16 18]
+        @test t * 2 == ArrayOperator{1}([2 4 6;8 10 12;14 16 18])
+        @test 2 * t == ArrayOperator{1}([2 4 6;8 10 12;14 16 18])
 
-        @test s - t == ones(3, 3)
+        @test s - t == ArrayOperator{1}(ones(3, 3))
+
+        @test_throws ArgumentError ArrayOperator{1}(ones(3,3)) .* ArrayOperator{0}(ones(3,3))
     end
 end
