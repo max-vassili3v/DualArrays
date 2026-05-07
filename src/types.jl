@@ -158,8 +158,6 @@ end
 # Lets us declare duals with a column vector as well as a row vector.
 Dual(value::T, partials::ArrayOperator{N, 0, S, L}) where {L, S, N, T} = Dual(value, ArrayOperator{0}(partials.data))
 
-Dual(value::T, partials::ArrayOperator{L, T}) where {L, T} = Dual(value, partials.data)
-
 """
     DualVector{T, M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
 

@@ -133,6 +133,7 @@ using DualArrays: ArrayOperator
     @testset "show" begin
         d = DualVector([1.0, 2.0], [1 0; 0 1])
         s = repr(MIME"text/plain"(), d)
+        @test repr(d) == s
         @test occursin(" + ", s)
         @test endswith(s, "𝛜")
     end

@@ -1,5 +1,6 @@
 using Test, LinearAlgebra
 using DualArrays: ArrayOperator
+using FillArrays
 
 @testset "ArrayOperator" begin
     t = ArrayOperator{1}([1 2 3;4 5 6;7 8 9])
@@ -46,7 +47,6 @@ using DualArrays: ArrayOperator
         @test result isa ArrayOperator
         @test result.data == s.data
         @test s == ArrayOperator{1}([2 3 4; 5 6 7; 8 9 10])
-
         @test t * t == ArrayOperator{1}([30 36 42;66 81 96; 102 126 150])
         @test t * [1, 0, 0] == ArrayOperator{1}([1,4,7])
         @test [1 0 0] * t == ArrayOperator{1}([1 2 3])
@@ -62,5 +62,13 @@ using DualArrays: ArrayOperator
     @testset "Transpose" begin
         @test transpose(t) == ArrayOperator{1}([1 4 7;2 5 8;3 6 9])
         @test transpose(ArrayOperator{0}([1, 2, 3])) == ArrayOperator{1}([1 2 3])
+    end
+
+    @testset "Arithmetic with nonstandard array" begin
+        o = OneElement(1, 1, 3)
+        a = ArrayOperator{1}(o)
+        b = ArrayOperator{1}(zeros(3))
+        b .= a .* 3
+        @test b == ArrayOperator{1}(OneElement(3, 1, 3))
     end
 end
