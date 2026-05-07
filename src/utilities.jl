@@ -14,13 +14,11 @@ _jacobian(d::DualVector) = d.jacobian.data
 _jacobian(d::DualVector, ::Int) = d.jacobian.data
 _jacobian(x::Number, N::Int) = Zeros(typeof(x), 1, N)
 
-_value(v::AbstractVector) = v
 _value(d::DualVector) = d.value
-_value(d::Dual) = d.value
 _value(x::Number) = x
 
 _size(x::Real) = 1
-_size(x::DualVector) = length(x.value)
+_size(x::DualVector) = size(x.jacobian.data, 2)
 
 """
 Vertically concatenate Dual numbers and DualVectors.

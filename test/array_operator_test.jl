@@ -58,4 +58,9 @@ using DualArrays: ArrayOperator
 
         @test_throws ArgumentError ArrayOperator{1}(ones(3,3)) .* ArrayOperator{0}(ones(3,3))
     end
+
+    @testset "Transpose" begin
+        @test transpose(t) == ArrayOperator{1}([1 4 7;2 5 8;3 6 9])
+        @test transpose(ArrayOperator{0}([1, 2, 3])) == ArrayOperator{1}([1 2 3])
+    end
 end

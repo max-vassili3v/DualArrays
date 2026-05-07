@@ -82,12 +82,6 @@ function getindex(x::DualMatrix, y::Vararg{Union{Colon, UnitRange}})
     DualMatrix(newval, newjac)
 end
 
-# Copyto! (For broadcast assignments)
-function Base.copyto!(dest::DualVector, src::DualVector)
-    copyto!(dest.value, src.value)
-    copyto!(dest.jacobian.data, src.jacobian.data)
-    return dest
-end
 # DualArray array interface
 for op in (:size, :axes)
     @eval $op(a::DualArray) = $op(a.value)

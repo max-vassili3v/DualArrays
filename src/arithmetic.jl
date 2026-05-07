@@ -2,9 +2,6 @@
 
 # Tensor transpose
 transpose(t::ArrayOperator{N, M}) where {N, M} = ArrayOperator{M}(transpose(t.data))
-# Special case: Transpose of a vector becomes a matrix
-# TODO: Technically a row vector is a Tensor{0, 1, T, 1}
-transpose(t::ArrayOperator{1, 0, <:Any, <:Any}) = ArrayOperator{1}(transpose(t.data))
 
 """
 Addition/Subtraction of DualVectors.
