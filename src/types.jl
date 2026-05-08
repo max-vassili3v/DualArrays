@@ -48,7 +48,6 @@ eltype(::Type{<:ArrayOperator{N, M, T}}) where {N,M,T} = T
 
 Base.Broadcast.broadcastable(t::ArrayOperator) = t
 
-transpose(t::ArrayOperator) = transpose(t.data)
 sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
 
 # Equality is only defined for two ArrayOperators of the same (N, M).
@@ -182,7 +181,7 @@ struct DualArray{T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} 
     value::A
     jacobian::J
 
-    function DualArray(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})}
+    function DualArray{T,N,A,J}(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})}
         if size(value) != ntuple(i -> size(jacobian, i), N)
             throw(ArgumentError("Length of value vector must match number of rows in Jacobian."))
         end
@@ -190,12 +189,17 @@ struct DualArray{T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} 
     end
 end
 
+DualArray{T,N}(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})} =
+    DualArray{T,N,A,J}(value, jacobian)
+
+DualArray{T,N}(value, jacobian) where {T, N} = DualArray{T,N}(elconvert(T, value), elconvert(T, jacobian))
+
 """
 Constructor that forces type compatibility
 """
 function DualArray(value::AbstractArray, jacobian::ArrayOperator)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualArray(elconvert(T, value), elconvert(T, jacobian))
+    DualArray{T}(value, jacobian)
 end
 
 # Helper function to define DualArrays with AbstractArray jacobians
@@ -206,11 +210,30 @@ end
 const DualVector = DualArray{T, 1} where {T}
 const DualMatrix = DualArray{T, 2} where {T}
 
+function DualVector(value::AbstractArray, jacobian::ArrayOperator)
+    T = promote_type(eltype(value), eltype(jacobian))
+    DualVector{T}(value, jacobian)
+end
+
+function DualMatrix(value::AbstractArray, jacobian::ArrayOperator)
+    T = promote_type(eltype(value), eltype(jacobian))
+    DualMatrix{T}(value, jacobian)
+end
+
+
+
+function DualVector(value::AbstractVector{S}, jacobian::AbstractArray{T, N}) where {S, T, N}
+    DualVector(value, ArrayOperator{1}(jacobian))
+end
+
+function DualMatrix(value::AbstractMatrix{S}, jacobian::AbstractArray{T, N}) where {S, T, N}
+    DualMatrix(value, ArrayOperator{2}(jacobian))
+end
+
+
 elconvert(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(elconvert(T, a.value), elconvert(T, a.jacobian))
 elconvert(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(elconvert(T, a.value), elconvert(T, a.jacobian))
 
-DualVector(value::AbstractVector, jacobian) = DualArray(value, jacobian)
-DualMatrix(value::AbstractMatrix, jacobian) = DualArray(value, jacobian)
 # Basic equality for Dual numbers
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials
 isapprox(a::Dual, b::Dual) = isapprox(a.value, b.value) && isapprox(a.partials, b.partials)

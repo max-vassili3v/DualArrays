@@ -152,3 +152,7 @@ using DualArrays: ArrayOperator
     include("broadcast_test.jl")
     include("array_operator_test.jl")
 end
+
+
+### test examples
+include("../examples/nestedduals.jl")
