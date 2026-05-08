@@ -32,8 +32,7 @@ function ArrayOperator{N}(data::AbstractArray{T, L}) where {L, T, N}
 end
 
 # Helper convert function
-_convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
-_convert_array(::Type{T}, t::ArrayOperator{N, M, S, L}) where {T, N, M, S, L} = ArrayOperator{N, M, T, L}(_convert_array(T, t.data))
+elconvert(::Type{T}, t::ArrayOperator{N, M, S, L}) where {T, N, M, S, L} = ArrayOperator{N, M, T, L}(elconvert(T, t.data))
 
 # Basic array interface
 for op in (:size, :axes, :iterate)
@@ -140,12 +139,12 @@ end
 
 function Dual(value::T, partials::AbstractArray{S}) where {S, T}
     T2 = promote_type(T, S)
-    Dual(convert(T2, value), _convert_array(T2, partials))
+    Dual(convert(T2, value), elconvert(T2, partials))
 end
 
 function Dual(value::T, partials::ArrayOperator{0, M, S, L}) where {L, S, M, T}
     T2 = promote_type(T, S)
-    Dual(convert(T2, value), _convert_array(T2, partials).data)
+    Dual(convert(T2, value), elconvert(T2, partials).data)
 end
 
 """
@@ -183,7 +182,7 @@ Constructor that forces type compatibility
 """
 function DualArray(value::AbstractArray, jacobian::ArrayOperator)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualArray(_convert_array(T, value), _convert_array(T, jacobian))
+    DualArray(elconvert(T, value), elconvert(T, jacobian))
 end
 
 # Helper function to define DualArrays with AbstractArray jacobians
