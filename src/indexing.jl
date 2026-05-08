@@ -2,9 +2,13 @@
 
 using ArrayLayouts, FillArrays, LinearAlgebra, SparseArrays
 
+
 sparse_getindex(a...) = layout_getindex(a...)
+
+# TODO: should we move these?
 sparse_getindex(D::Diagonal, k::Integer, ::Colon) = OneElement(D.diag[k], k, size(D, 2))
 sparse_getindex(D::Diagonal, ::Colon, j::Integer) = OneElement(D.diag[j], j, size(D, 1))
+sparse_getindex(d::DualArray, args...) = d[args...]
 
 
 # We need a system of indexing that takes two tuples
@@ -59,6 +63,24 @@ function getindex(x::DualVector, y::UnitRange)
     newval = x.value[y]
     newjac = x.jacobian[y, :]
     DualVector(newval, newjac)
+end
+
+function getindex(x::DualMatrix, y::Int, ::Colon)
+    newval = x.value[y, :]
+    newjac = x.jacobian[(y,:), :]
+    DualVector(newval, newjac)
+end
+
+function getindex(x::DualMatrix, ::Colon, y::Int)
+    newval = x.value[:, y]
+    newjac = x.jacobian[(:,y), :]
+    DualVector(newval, newjac)
+end
+
+function getindex(x::DualMatrix, y::Vararg{Union{Colon, UnitRange}})
+    newval = x.value[y...]
+    newjac = x.jacobian[y, :]
+    DualMatrix(newval, newjac)
 end
 
 # DualArray array interface

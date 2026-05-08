@@ -1,5 +1,8 @@
 # Arithmetic operations for DualArrays.jl
 
+# Tensor transpose
+transpose(t::ArrayOperator{N, M}) where {N, M} = ArrayOperator{M}(transpose(t.data))
+
 """
 Addition/Subtraction of DualVectors.
 """
@@ -59,6 +62,16 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
             jac = $p2.(x, y.value) .* y.jacobian
             return DualVector(val, jac)
         end
+        @eval function broadcasted(::typeof($f), x::DualVector, y::AbstractVector)
+            val = $f.(x.value, y)
+            jac = $p1.(x.value, y) .* x.jacobian
+            return DualVector(val, jac)
+        end
+        @eval function broadcasted(::typeof($f), x::AbstractVector, y::DualVector)
+            val = $f.(x, y.value)
+            jac = $p2.(x, y.value) .* y.jacobian
+            return DualVector(val, jac)
+        end
         @eval function broadcasted(::typeof($f), x::DualVector, y::Dual)
             val = $f.(x.value, y.value)
             # Product rule
@@ -75,6 +88,16 @@ for (_, f, n) in DiffRules.diffrules(filter_modules=(:Base,))
             val = $f.(x.value, y.value)
             # Product rule
             jac = $p1.(x.value, y.value) .* x.jacobian .+ $p2.(x.value, y.value) .* y.jacobian
+            return DualVector(val, jac)
+        end
+        @eval function broadcasted(::typeof($f), x::Dual, y::AbstractVector)
+            val = $f.(x.value, y)
+            jac = $p1.(x.value, y) .* transpose(x.partials)
+            return DualVector(val, jac)
+        end
+        @eval function broadcasted(::typeof($f), x::AbstractVector, y::Dual)
+            val = $f.(x, y.value)
+            jac = $p2.(x, y.value) .* transpose(y.partials)
             return DualVector(val, jac)
         end
         # Must have Base.$f in order not to import everything

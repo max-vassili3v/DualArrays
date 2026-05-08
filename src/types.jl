@@ -48,7 +48,6 @@ eltype(::Type{<:ArrayOperator{N, M, T}}) where {N,M,T} = T
 
 Base.Broadcast.broadcastable(t::ArrayOperator) = t
 
-transpose(t::ArrayOperator) = transpose(t.data)
 sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
 
 # Equality is only defined for two ArrayOperators of the same (N, M).
@@ -106,19 +105,25 @@ _unwrap(bc::Broadcast.Broadcasted) = Broadcast.Broadcasted(bc.f, _unwrap_args(bc
 _unwrap(x) = x
 _unwrap_args(args::Tuple) = map(_unwrap, args)
 
-# copy ensures that arithmetic involving a ArrayOperator returns a ArrayOperator
+# copy ensures that arithmetic involving a Tensor returns a Tensor
 function Base.copy(bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{L, N}}) where {L, N}
-    # We create a Broadcasted of the underlying arrays and create a ArrayOperator containing
-    # the evaluated broadcast
-    databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
-    ArrayOperator{N}(copy(Broadcast.flatten(databroadcast)))
+    # We create a Broadcasted of the underlying arrays and create a Tensor containing
+    # the evaluated broadcast. We check if Base.broadcasted is a Broadcasted
+    # or is overriden such as with DualArrays
+    databroadcast = Base.broadcasted(bc.f, _unwrap_args(bc.args)...)
+    result = databroadcast isa Broadcast.Broadcasted ? copy(Broadcast.flatten(databroadcast)) : databroadcast
+    ArrayOperator{N}(result)
 end
 
 # copyto adds support for .=
 function Base.copyto!(dest::ArrayOperator, bc::Broadcast.Broadcasted{ArrayOperatorBroadcastStyle{L, N}}) where {L, N}
     # As above
-    databroadcast = Broadcast.Broadcasted(bc.f, _unwrap_args(bc.args), bc.axes)
-    copyto!(dest.data, Broadcast.flatten(databroadcast))
+    databroadcast = Base.broadcasted(bc.f, _unwrap_args(bc.args)...)
+    if databroadcast isa Broadcast.Broadcasted
+        copyto!(dest.data, Broadcast.flatten(databroadcast))
+    else
+        copyto!(dest.data, databroadcast)
+    end
     dest
 end
 
@@ -149,6 +154,11 @@ function Dual(value::T, partials::ArrayOperator{0, M, S, L}) where {L, S, M, T}
     Dual(convert(T2, value), elconvert(T2, partials).data)
 end
 
+# Lets us declare duals with a column vector as well as a row vector.
+Dual(value::T, partials::ArrayOperator{N, 0, S, L}) where {L, S, N, T} = Dual(value, ArrayOperator{0}(partials.data))
+
+
+
 """
     DualVector{T, M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
 
@@ -167,11 +177,11 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualArray{T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractVector{Dual{T}}
+struct DualArray{T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractArray{Dual{T}, N}
     value::A
     jacobian::J
 
-    function DualArray(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})}
+    function DualArray{T,N,A,J}(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})}
         if size(value) != ntuple(i -> size(jacobian, i), N)
             throw(ArgumentError("Length of value vector must match number of rows in Jacobian."))
         end
@@ -179,12 +189,17 @@ struct DualArray{T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} 
     end
 end
 
+DualArray{T,N}(value::A, jacobian::J) where {T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})} =
+    DualArray{T,N,A,J}(value, jacobian)
+
+DualArray{T,N}(value, jacobian) where {T, N} = DualArray{T,N}(elconvert(T, value), elconvert(T, jacobian))
+
 """
 Constructor that forces type compatibility
 """
 function DualArray(value::AbstractArray, jacobian::ArrayOperator)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualArray(elconvert(T, value), elconvert(T, jacobian))
+    DualArray{T}(value, jacobian)
 end
 
 # Helper function to define DualArrays with AbstractArray jacobians
@@ -195,8 +210,33 @@ end
 const DualVector = DualArray{T, 1} where {T}
 const DualMatrix = DualArray{T, 2} where {T}
 
-DualVector(value::AbstractVector, jacobian) = DualArray(value, jacobian)
-DualMatrix(value::AbstractMatrix, jacobian) = DualArray(value, jacobian)
+function DualVector(value::AbstractArray, jacobian::ArrayOperator)
+    T = promote_type(eltype(value), eltype(jacobian))
+    DualVector{T}(value, jacobian)
+end
+
+function DualMatrix(value::AbstractArray, jacobian::ArrayOperator)
+    T = promote_type(eltype(value), eltype(jacobian))
+    DualMatrix{T}(value, jacobian)
+end
+
+
+
+function DualVector(value::AbstractVector{S}, jacobian::AbstractArray{T, N}) where {S, T, N}
+    DualVector(value, ArrayOperator{1}(jacobian))
+end
+
+function DualMatrix(value::AbstractMatrix{S}, jacobian::AbstractArray{T, N}) where {S, T, N}
+    DualMatrix(value, ArrayOperator{2}(jacobian))
+end
+
+
+elconvert(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(elconvert(T, a.value), elconvert(T, a.jacobian))
+elconvert(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(elconvert(T, a.value), elconvert(T, a.jacobian))
+
 # Basic equality for Dual numbers
 ==(a::Dual, b::Dual) = a.value == b.value && a.partials == b.partials
 isapprox(a::Dual, b::Dual) = isapprox(a.value, b.value) && isapprox(a.partials, b.partials)
+
+# Type promotion on Dual
+Base.promote_rule(::Type{Dual{T1}}, ::Type{Dual{T2}}) where {T1, T2} = Dual{promote_type(T1, T2)}
