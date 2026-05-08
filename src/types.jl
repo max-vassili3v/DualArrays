@@ -44,6 +44,7 @@ end
 
 # Since ArrayOperator is not an AbstractArray we define these manually
 eltype(t::ArrayOperator) = eltype(t.data)
+eltype(::Type{<:ArrayOperator{N, M, T}}) where {N,M,T} = T
 
 Base.Broadcast.broadcastable(t::ArrayOperator) = t
 
