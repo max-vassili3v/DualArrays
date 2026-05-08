@@ -17,6 +17,8 @@ import Base: +, -, ==, getindex, size, axes, broadcasted, show, sum, vcat, conve
 
 using LinearAlgebra, ArrayLayouts, FillArrays, DiffRules, TensorOperations
 
+import FillArrays: elconvert
+
 include("types.jl")
 include("indexing.jl")
 include("arithmetic.jl")

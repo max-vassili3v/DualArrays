@@ -32,10 +32,7 @@ function ArrayOperator{N}(data::AbstractArray{T, L}) where {L, T, N}
 end
 
 # Helper convert function
-_convert_array(::Type{T}, a::AbstractArray{T}) where {T} = a
-_convert_array(::Type{T}, a::AbstractArray) where {T} = T.(a)
-_convert_array(::Type{T}, t::ArrayOperator{N, M, S, L}) where {T, N, M, S, L} = ArrayOperator{N, M, T, L}(_convert_array(T, t.data))
-
+elconvert(::Type{T}, t::ArrayOperator{N, M, S, L}) where {T, N, M, S, L} = ArrayOperator{N, M, T, L}(elconvert(T, t.data))
 
 # Basic array interface
 for op in (:size, :axes, :iterate)
@@ -47,9 +44,11 @@ end
 
 # Since ArrayOperator is not an AbstractArray we define these manually
 eltype(t::ArrayOperator) = eltype(t.data)
+eltype(::Type{<:ArrayOperator{N, M, T}}) where {N,M,T} = T
 
 Base.Broadcast.broadcastable(t::ArrayOperator) = t
 
+transpose(t::ArrayOperator) = transpose(t.data)
 sum(t::ArrayOperator; kwargs...) = sum(t.data; kwargs...)
 
 # Equality is only defined for two ArrayOperators of the same (N, M).
@@ -137,26 +136,29 @@ A dual number type that stores a value and its partials (derivatives).
 # Fields
 - `value::T`: The primal value
 - `partials::Partials`: The partial derivatives stored as an array
-
-NOTE: Partials will soon be in the ArrayOperator format. 
 """
 struct Dual{T, Partials <: AbstractArray{T}} <: Real
     value::T
+    # represents an ArrayOperator from an array to a scalar.
+    # This is the transpose of the data stored by an ArrayOperator, so that
+    # in the simple vector case we only store a vector (not a row-vector).
     partials::Partials
 end
 
 function Dual(value::T, partials::AbstractArray{S}) where {S, T}
     T2 = promote_type(T, S)
-    Dual(convert(T2, value), _convert_array(T2, partials))
+    Dual(convert(T2, value), elconvert(T2, partials))
 end
 
 function Dual(value::T, partials::ArrayOperator{0, M, S, L}) where {L, S, M, T}
     T2 = promote_type(T, S)
-    Dual(convert(T2, value), _convert_array(T2, partials).data)
+    Dual(convert(T2, value), elconvert(T2, partials).data)
 end
 
 # Lets us declare duals with a column vector as well as a row vector.
 Dual(value::T, partials::ArrayOperator{N, 0, S, L}) where {L, S, N, T} = Dual(value, ArrayOperator{0}(partials.data))
+
+
 
 """
     DualVector{T, M <: AbstractMatrix{T}} <: AbstractVector{Dual{T}}
@@ -176,7 +178,7 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractArray{Dual{T}, N}
+struct DualArray{T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractArray{Dual{T}, N}
     value::A
     jacobian::J
 
@@ -193,7 +195,7 @@ Constructor that forces type compatibility
 """
 function DualArray(value::AbstractArray, jacobian::ArrayOperator)
     T = promote_type(eltype(value), eltype(jacobian))
-    DualArray(_convert_array(T, value), _convert_array(T, jacobian))
+    DualArray(elconvert(T, value), elconvert(T, jacobian))
 end
 
 # Helper function to define DualArrays with AbstractArray jacobians
@@ -204,8 +206,8 @@ end
 const DualVector = DualArray{T, 1} where {T}
 const DualMatrix = DualArray{T, 2} where {T}
 
-_convert_array(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(_convert_array(T, a.value), _convert_array(T, a.jacobian))
-_convert_array(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(_convert_array(T, a.value), _convert_array(T, a.jacobian))
+elconvert(::Type{Dual{T}}, a::DualVector) where {T} = DualVector(elconvert(T, a.value), elconvert(T, a.jacobian))
+elconvert(::Type{Dual{T}}, a::DualMatrix) where {T} = DualMatrix(elconvert(T, a.value), elconvert(T, a.jacobian))
 
 DualVector(value::AbstractVector, jacobian) = DualArray(value, jacobian)
 DualMatrix(value::AbstractMatrix, jacobian) = DualArray(value, jacobian)

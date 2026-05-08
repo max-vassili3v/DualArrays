@@ -5,6 +5,10 @@ using FillArrays
 @testset "ArrayOperator" begin
     t = ArrayOperator{1}([1 2 3;4 5 6;7 8 9])
 
+    @testset "eltype" begin
+        @test eltype(t) == eltype(typeof(t)) == Int
+    end
+
     @testset "Equality" begin
         @test t == ArrayOperator{1}([1 2 3;4 5 6;7 8 9])
         @test isapprox(t, ArrayOperator{1}([1 2 3;4 5 6;7 8 9]))
