@@ -130,11 +130,12 @@ A dual number type that stores a value and its partials (derivatives).
 # Fields
 - `value::T`: The primal value
 - `partials::Partials`: The partial derivatives stored as an array
-
-NOTE: Partials will soon be in the ArrayOperator format. 
 """
 struct Dual{T, Partials <: AbstractArray{T}} <: Real
     value::T
+    # represents an ArrayOperator from an array to a scalar.
+    # This is the transpose of the data stored by an ArrayOperator, so that
+    # in the simple vector case we only store a vector (not a row-vector).
     partials::Partials
 end
 
@@ -166,7 +167,7 @@ For now the entries just return the values when indexed.
 
 Constructs a DualVector, ensuring that the vector length matches the number of rows in the Jacobian.
 """
-struct DualArray{T, N   , A <: AbstractArray{T,N},J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractVector{Dual{T}}
+struct DualArray{T, N, A <: AbstractArray{T,N}, J <: (ArrayOperator{N, M, T, L} where {L, M})} <: AbstractVector{Dual{T}}
     value::A
     jacobian::J
 
