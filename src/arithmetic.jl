@@ -135,16 +135,16 @@ function _contract(x, y, A, B, C)
     return TensorOperations.tensorcontract(x, x_idx, false, y, y_idx, false, ret_idx, 1)
 end
 
-function *(x::ArrayOperator{A, B, <:Any, <:Any}, y::ArrayOperator{B, C, <:Any, <:Any}) where {A, B, C}
+function *(x::ArrayOperator{A, B}, y::ArrayOperator{B, C}) where {A, B, C}
     return ArrayOperator{A}(_contract(x.data, y.data, A, B, C))
 end
 
-function *(x::ArrayOperator{A, B, <:Any, <:Any}, y::AbstractArray{<:Any, L}) where {A, B, L}
+function *(x::ArrayOperator{A, B}, y::AbstractArray{<:Any, L}) where {A, B, L}
     C = L - B
     return ArrayOperator{A}(_contract(x.data, y, A, B, C))
 end
 
-function *(x::AbstractArray{<:Any, L}, y::ArrayOperator{B, C, <:Any, <:Any}) where {L, B, C}
+function *(x::AbstractArray{<:Any, L}, y::ArrayOperator{B, C}) where {L, B, C}
     A = L - B
     return ArrayOperator{A}(_contract(x, y.data, A, B, C))
 end
