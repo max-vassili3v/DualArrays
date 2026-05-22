@@ -3,11 +3,11 @@
 # Tensor transpose
 transpose(t::ArrayOperator{N, M}) where {N, M} = ArrayOperator{M}(transpose(t.data))
 
-# Addition/Subtraction of DualArrays.
+# Addition/Subtraction of DualVectors.
 for op in (:+, :-)
-    @eval $op(x::DualArray, y::DualArray) = DualArray($op(x.value, y.value), $op(x.jacobian, y.jacobian))
-    @eval $op(x::DualArray, y::AbstractArray) = DualArray($op(x.value, y), x.jacobian)
-    @eval $op(x::AbstractArray, y::DualArray) = DualArray($op(x, y.value), y.jacobian)
+    @eval $op(x::DualVector, y::DualVector) = DualVector($op(x.value, y.value), $op(x.jacobian, y.jacobian))
+    @eval $op(x::DualVector, y::AbstractVector) = DualVector($op(x.value, y), x.jacobian)
+    @eval $op(x::AbstractVector, y::DualVector) = DualVector($op(x, y.value), y.jacobian)
 end
 
 
